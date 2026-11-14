@@ -328,6 +328,10 @@ jobs:
             _interop/recipes/report.json
   current-toolchain:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [wasm, js]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
@@ -343,10 +347,15 @@ jobs:
       - run: moon version --all
       - run: moon update
       - run: python tools/runtime_audit.py
-      - run: moon check --target js --deny-warn
-      - run: moon build --target js --deny-warn
-      - run: moon test --target js --deny-warn
+      - run: moon check --target ${{ matrix.target }} --deny-warn
+      - run: moon build --target ${{ matrix.target }} --deny-warn
+      - run: moon test --target ${{ matrix.target }} --deny-warn
+      - run: moon run cmd/main --target ${{ matrix.target }}
+      - run: moon run cmd/cursor --target ${{ matrix.target }}
+      - run: python tools/quickstart_smoke.py
+        if: matrix.target == 'js'
       - run: moon doc
+        if: matrix.target == 'js'
   large-source:
     if: github.event_name == 'workflow_dispatch' && inputs.large_source
     runs-on: ubuntu-latest
