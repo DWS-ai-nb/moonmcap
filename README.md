@@ -14,7 +14,7 @@ MoonBit 的 **MCAP 0 消息日志库**，用于读取和校验机器人、传感
 
 项目固定编译基准为 **moonc 0.10.17+d971670cd**，满足不低于 0.10.16 的要求。本地文件和网络宿主需要 **JS/Node.js 22.3+**。
 
-上游的 Windows 兼容性记录使用 `moonc v0.10.20+65efd5b93`、`moon 0.1.20261104 (940aa18)` 和 `moonrun 0.1.20261104 (940aa18)`。本分支的固定版本 CI 使用 `0.10.17+d971670cd` 与 `async@0.20.2`，验证 JS/Wasm 及文件宿主；当前官方工具链 CI 显式选择 `async@0.22.10`。使用当前官方安装器时先执行 `moon add moonbitlang/async@0.22.10`、`moon update`，再运行检查与测试。[GitHub CI](.github/workflows/ci.yml) 保留两个组合的严格检查并记录 `moon version --all`，实际执行结果见 Actions。
+上游的 Windows 兼容性记录使用 `moonc v0.10.20+65efd5b93`、`moon 0.1.20261104 (940aa18)` 和 `moonrun 0.1.20261104 (940aa18)`。本分支的固定版本 CI 使用 `0.10.17+d971670cd` 与 `async@0.20.2`，验证 JS/Wasm 及文件宿主；当前官方工具链 CI 显式选择 `async@0.22.10`。使用当前官方安装器时先执行 `moon add --upgrade moonbitlang/async@0.22.10`、`moon update`，再运行检查与测试。[GitHub CI](.github/workflows/ci.yml) 保留两个组合的严格检查并记录 `moon version --all`，实际执行结果见 Actions。
 
 在已有 MoonBit 项目中执行下面的安装命令；从空目录开始时，先创建 `moon.mod`：
 

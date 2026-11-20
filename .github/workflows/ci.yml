@@ -347,7 +347,9 @@ jobs:
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - run: moon version --all
       - name: Select async version for current official toolchain
-        run: moon add moonbitlang/async@0.22.10
+        run: |
+          moon add --upgrade moonbitlang/async@0.22.10
+          python -c "from pathlib import Path; assert 'moonbitlang/async@0.22.10' in Path('moon.mod').read_text(encoding='utf-8'), 'async dependency upgrade did not apply'"
       - run: moon update
       - run: python tools/runtime_audit.py
       - run: moon check --target ${{ matrix.target }} --deny-warn
