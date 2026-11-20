@@ -45,7 +45,7 @@ async test "HTTP cache deduplicates tasks and isolates task cancellation from so
   )
   @async.with_task_group(async fn(cleanup) {
     cleanup.add_defer(() => {
-      cache.close()
+      @async.protect_from_cancel(() => cache.close())
       @async.protect_from_cancel(() => fixture_close(fixture).wait())
     })
 

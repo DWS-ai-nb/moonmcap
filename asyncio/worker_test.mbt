@@ -32,7 +32,7 @@ async test "worker host retains running cancellation reservations and closes all
   let message = log.messages[0]
   @async.with_task_group(async fn(cleanup) {
     cleanup.add_defer(() => {
-      pool.close()
+      @async.protect_from_cancel(() => pool.close())
       @async.protect_from_cancel(() => close_worker_fixture(fixture).wait())
     })
 
