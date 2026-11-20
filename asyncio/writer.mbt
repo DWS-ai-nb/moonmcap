@@ -160,7 +160,8 @@ async fn AsyncWriter::drain(self : AsyncWriter) -> Unit {
     }
   } catch {
     error => {
-      cancelled[0] = @async.is_cancellation_error(error)
+      // Cleanup can replace the thrown error while cancellation stays active.
+      cancelled[0] = @async.is_being_cancelled()
       raise error
     }
   }

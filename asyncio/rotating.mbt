@@ -178,7 +178,8 @@ pub async fn RotatingWriter::append(
     }
   } catch {
     error => {
-      cancelled[0] = @async.is_cancellation_error(error)
+      // Task cancellation survives replacement of its error by cleanup.
+      cancelled[0] = @async.is_being_cancelled()
       raise error
     }
   }

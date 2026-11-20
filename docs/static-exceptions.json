@@ -40,15 +40,15 @@
       "file": "asyncio/attachment_stream_checkpoint.mbt",
       "declaration": "AsyncAttachmentCopy::step",
       "warning": "fragile_catch_all",
-      "scope_sha256": "dee3c6e092ad6f08be086431fa62d179db641dbdf627e539ac4294642a62f4d5",
-      "reason": "Inspect task cancellation separately from I/O failure after awaited reads, including the final checksum; errdefer closes the session and sink."
+      "scope_sha256": "ea87b10cba8b2c801783664f331042b76bd0c9f000cc9966966e9880c7975e1e",
+      "reason": "Classify task cancellation by is_being_cancelled across supported async versions; errdefer handles cleanup even when cancellation bypasses catch."
     },
     {
       "file": "asyncio/attachment_stream_writer.mbt",
       "declaration": "AsyncWriter::attachment_operation",
       "warning": "fragile_catch_all",
-      "scope_sha256": "8030f41a8c4fe687347444df04c65231a9a91b78110ce11f047edf3b70662d74",
-      "reason": "Classify task cancellation after awaited output so the writer records cancellation separately from transport failure."
+      "scope_sha256": "ad083df4d2e308fc1cfa9c312b86d1d00c81c5373bc2be7abcb89f2570295645",
+      "reason": "Classify task cancellation by is_being_cancelled across supported async versions; errdefer handles cleanup even when cancellation bypasses catch."
     },
     {
       "file": "asyncio/cached_js.mbt",
@@ -82,8 +82,8 @@
       "file": "asyncio/rotating.mbt",
       "declaration": "RotatingWriter::append",
       "warning": "fragile_catch_all",
-      "scope_sha256": "f046b7c66a8be0f7cfcdbc857c7a166410eea6b4860abc97f709363b5a4ff0b5",
-      "reason": "Catch only classifies the existing runtime cancellation Error; all resource cleanup is in errdefer, which also handles uncaught cancellation signals."
+      "scope_sha256": "f59babf51d35bed0a4a9ba3defff63667e55ad0b6b5f3d785172ba824bdec84a",
+      "reason": "Classify task cancellation by is_being_cancelled across supported async versions; errdefer handles cleanup even when cancellation bypasses catch."
     },
     {
       "file": "asyncio/worker_js.mbt",
@@ -96,8 +96,8 @@
       "file": "asyncio/writer.mbt",
       "declaration": "AsyncWriter::drain",
       "warning": "fragile_catch_all",
-      "scope_sha256": "8bc9bb0e8e6594b4c946ca43025326f945d5071678753922515bbd733baf3b7f",
-      "reason": "Catch only classifies the existing runtime cancellation Error; all resource cleanup is in errdefer, which also handles uncaught cancellation signals."
+      "scope_sha256": "94392fc1aa1d0616c1b8b592f558a2c111753e6e932297b2bde3ea49128dd3c5",
+      "reason": "Classify task cancellation by is_being_cancelled across supported async versions; errdefer handles cleanup even when cancellation bypasses catch."
     },
     {
       "file": "asyncio/writer.mbt",

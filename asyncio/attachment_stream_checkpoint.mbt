@@ -4,7 +4,19 @@ pub(all) enum AsyncAttachmentCopyState {
   AttachmentCopyComplete
   AttachmentCopyFailed
   AttachmentCopyCancelled
-} derive(Eq)
+}
+
+///|
+// Keep Eq available on both the pinned compiler and the current toolchain.
+pub impl Eq for AsyncAttachmentCopyState with fn equal(self, other) {
+  match (self, other) {
+    (AttachmentCopyActive, AttachmentCopyActive)
+    | (AttachmentCopyComplete, AttachmentCopyComplete)
+    | (AttachmentCopyFailed, AttachmentCopyFailed)
+    | (AttachmentCopyCancelled, AttachmentCopyCancelled) => true
+    _ => false
+  }
+}
 
 ///|
 pub extend AsyncAttachmentCopyState with Eq::{not_equal, equal}
@@ -197,7 +209,8 @@ pub async fn AsyncAttachmentCopy::step(
     self.progress()
   } catch {
     error => {
-      cancellation[0] = @async.is_cancellation_error(error)
+      // Task state remains authoritative if cleanup replaced its error.
+      cancellation[0] = @async.is_being_cancelled()
       raise error
     }
   }

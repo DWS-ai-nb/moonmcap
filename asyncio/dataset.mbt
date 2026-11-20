@@ -487,7 +487,8 @@ async fn AsyncDatasetCursor::take(
     None
   } catch {
     error => {
-      cancelled[0] = @async.is_cancellation_error(error)
+      // Detect cancellation even when cleanup replaced the original error.
+      cancelled[0] = @async.is_being_cancelled()
       if self.state == @mcap.FileCancelled {
         None
       } else {

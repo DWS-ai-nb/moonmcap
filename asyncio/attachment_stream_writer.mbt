@@ -44,7 +44,8 @@ async fn AsyncWriter::attachment_operation(
     self.drain()
   } catch {
     error => {
-      ordinary_failure[0] = !@async.is_cancellation_error(error)
+      // Cleanup may replace the cancellation error; inspect task state.
+      ordinary_failure[0] = !@async.is_being_cancelled()
       raise error
     }
   }
