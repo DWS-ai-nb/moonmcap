@@ -1,0 +1,64 @@
+{
+  "baseline_commit": "e99a19f101092c982189d85d9536cf47eb5587c4",
+  "input": "synthetic unchunked MCAP without indexes",
+  "python_mcap": "1.6.0",
+  "input_bytes": 67174797,
+  "input_sha256": "35614bb72f4d94532f3c1151831308ab137c94d374fa4ad216439ef11bdd3cfa",
+  "attachment_bytes": 67174400,
+  "attachment_sha256": "feafdd5e1aec05f3a3a67ec95aa74781bd6c8a92883d8003df686b4f0f0aecd6",
+  "unchanged_ordinary_record_limit_bytes": 16777216,
+  "baseline_query": {
+    "exit": 2,
+    "error": "cursor fallback length exceeds configured limit"
+  },
+  "candidate_legacy_query": {
+    "exit": 2,
+    "error": "cursor fallback length exceeds configured limit"
+  },
+  "candidate_scan_query": {
+    "read_calls": 15,
+    "bytes_read": "270",
+    "decoded_chunks": 0,
+    "cache_hits": 0,
+    "cache_bytes": 0,
+    "peak_cache_bytes": 0,
+    "indexed": false,
+    "full_validation": false
+  },
+  "candidate_attachment_list": {
+    "read_calls": 17,
+    "bytes_read": "245",
+    "decoded_chunks": 0,
+    "cache_hits": 0,
+    "cache_bytes": 0,
+    "peak_cache_bytes": 0,
+    "indexed": false,
+    "full_validation": false
+  },
+  "attachment_extraction_crc_verified": true,
+  "baseline_merge": {
+    "exit": 2,
+    "error": "record length exceeds configured limit"
+  },
+  "candidate_merge_reference_readback": true,
+  "corrupt_extraction": {
+    "exit": 2,
+    "error": "attachment CRC mismatch at 172"
+  },
+  "corrupt_merge": {
+    "exit": 2,
+    "error": "attachment CRC mismatch at 172"
+  },
+  "corrupt_data_crc": {
+    "exit": 2,
+    "error": "external input data CRC mismatch"
+  },
+  "destination_preserved": true,
+  "candidate_full_validation": true,
+  "wasm_real_file_query_and_extraction": true,
+  "wasm_extracted_sha256": "feafdd5e1aec05f3a3a67ec95aa74781bd6c8a92883d8003df686b4f0f0aecd6",
+  "node_export_reference_hash": "feafdd5e1aec05f3a3a67ec95aa74781bd6c8a92883d8003df686b4f0f0aecd6",
+  "candidate_commit": "73c31b9b091118d88829ef3175c30f4f5adf3f8d",
+  "candidate_tracked_changes": false,
+  "workflow_sha256": "97d3f3cf1c061ed86899084af886c746d560b4a761eb98ea8489fb999400fa95"
+}
