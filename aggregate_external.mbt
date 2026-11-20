@@ -236,7 +236,7 @@ fn aggregate_decode(
     numeric: numeric.to_int(),
     missing: missing.to_int(),
     non_numeric: non_numeric.to_int(),
-    coefficient: @bigint.BigInt::from_string(coefficient),
+    coefficient: aggregate_coefficient(coefficient),
     exponent,
     minimum: extrema[0],
     maximum: extrema[1],

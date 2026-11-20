@@ -77,6 +77,13 @@ fn decimal_power(exponent : Int32) -> @bigint.BigInt raise McapError {
 }
 
 ///|
+fn aggregate_coefficient(text : String) -> @bigint.BigInt raise McapError {
+  @string.parse_bigint(text[:]) catch {
+    _ => raise Invalid("invalid aggregate decimal coefficient")
+  }
+}
+
+///|
 fn AggregateState::number(
   self : AggregateState,
   text : String,
@@ -85,7 +92,7 @@ fn AggregateState::number(
   if d.exponent < -1024 || d.exponent > 1024 {
     raise Invalid("aggregate exponent outside -1024..1024")
   }
-  let coefficient = @bigint.BigInt::from_string(
+  let coefficient = aggregate_coefficient(
     (if d.negative { "-" } else { "" }) + d.digits,
   )
   let exponent = if self.numeric == 0 {

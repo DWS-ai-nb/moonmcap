@@ -327,6 +327,7 @@ jobs:
             _interop/regression/report.json
             _interop/recipes/report.json
   current-toolchain:
+    name: current-toolchain-async-0.22.10 (${{ matrix.target }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -345,6 +346,8 @@ jobs:
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - run: moon version --all
+      - name: Select async version for current official toolchain
+        run: moon add moonbitlang/async@0.22.10
       - run: moon update
       - run: python tools/runtime_audit.py
       - run: moon check --target ${{ matrix.target }} --deny-warn
