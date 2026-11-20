@@ -284,6 +284,7 @@ fn SortSession::ingest(
   global : Log,
   writer : StreamWriter,
   runs : Array[Int32],
+  attachment_ref? : (AttachmentRef) -> Unit raise McapError,
 ) -> Unit raise McapError {
   let limits = self.options.limits
   let reader = open_reader(
@@ -322,13 +323,23 @@ fn SortSession::ingest(
       raise Invalid("external input record budget exceeded")
     }
     self.trace_event(RecordStart(position))
-    let record = source.record(position, reader.data_end + 13UL, limits)
+    let span = source.record_span(position, reader.data_end + 13UL, limits)
+    if position == 8UL && span.opcode != 0x01 {
+      raise Invalid("external input first record is not Header")
+    }
+    if span.opcode == 0x09 &&
+      (self.observer is None || attachment_ref is Some(_)) {
+      crc = self.ingest_attachment(
+        source, tables, writer, span, crc, attachment_ref,
+      )
+      position = span.next
+      count += 1
+      continue
+    }
+    let record = { opcode: span.opcode, body: source.read_body(span, limits), }
     self.trace_event(
       RecordRead(position, record.opcode, record.body.length() + 9),
     )
-    if position == 8UL && record.opcode != 0x01 {
-      raise Invalid("external input first record is not Header")
-    }
     match record.opcode {
       0x01 => {
         if position != 8UL {
@@ -463,13 +474,59 @@ fn SortSession::ingest(
       RecordAccepted(position, record.opcode, record.body.length() + 9),
     )
     // The CRC covers the same on-disk header and body without joining them.
-    let header = @buffer.Buffer::Buffer()
-    put_record_header(header, record.opcode, record.body.length())
-    crc = crc32_extend(crc32_extend(crc, header.to_bytes()), record.body)
-    position += (record.body.length() + 9).to_uint64()
+    crc = crc32_extend(crc32_extend(crc, span.prefix), record.body)
+    position = span.next
     count += 1
   }
   raise Invalid("external input missing DataEnd")
+}
+
+///|
+fn SortSession::ingest_attachment(
+  self : SortSession,
+  source : ReadSource,
+  tables : SourceTables,
+  writer : StreamWriter,
+  span : RecordSpan,
+  data_crc : UInt32,
+  notify : ((AttachmentRef) -> Unit raise McapError)?,
+) -> UInt32 raise McapError {
+  let (attachment, header) = source.parse_attachment(span, self.options.limits)
+  let info = attachment.index
+  let index = encode_attachment_index(info)
+  tables.reserve(index.length(), self.options.declaration_bytes)
+  tables.attachments[span.offset] = index
+  if info.length <= 2147483647UL {
+    self.trace_event(RecordRead(span.offset, 0x09, info.length.to_int()))
+  }
+  let mut crc = crc32_extend(crc32_extend(data_crc, span.prefix), header)
+  let transfer = (consume : (Bytes) -> Unit raise McapError) => {
+    let (checksum, _) = attachment.transfer(
+      bytes => {
+        crc = crc32_extend(crc, bytes)
+        consume(bytes)
+      },
+      self.cancelled,
+    )
+    crc = crc32_extend(crc, checksum)
+    source.visit_span_bytes(
+      attachment.payload_at + info.data_size + 4UL,
+      attachment.body_end,
+      bytes => crc = crc32_extend(crc, bytes),
+      self.cancelled,
+    )
+  }
+  match notify {
+    Some(callback) => {
+      callback(attachment)
+      transfer(fn(_) { () })
+    }
+    None => writer.write_attachment(info, transfer)
+  }
+  if info.length <= 2147483647UL {
+    self.trace_event(RecordAccepted(span.offset, 0x09, info.length.to_int()))
+  }
+  crc
 }
 
 ///|

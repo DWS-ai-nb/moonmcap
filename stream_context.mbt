@@ -197,19 +197,18 @@ pub fn copy_clip_auxiliary(
 ) -> UInt64 raise McapError {
   scan_source(
     source,
-    source_visitor(
-      attachment=a => {
-        if attachment_names.is_empty() || attachment_names.contains(a.name) {
-          writer.add_attachment(a)
-        }
-      },
-      metadata=m => {
-        if metadata_names.is_empty() || metadata_names.contains(m.name) {
-          writer.add_metadata(m)
-        }
-      },
-    ),
+    source_visitor(metadata=m => {
+      if metadata_names.is_empty() || metadata_names.contains(m.name) {
+        writer.add_metadata(m)
+      }
+    }),
     limits~,
     cancelled~,
+    attachment_ref=attachment => {
+      if attachment_names.is_empty() ||
+        attachment_names.contains(attachment.info().name) {
+        writer.copy_attachment(attachment, cancelled~)
+      }
+    },
   )
 }

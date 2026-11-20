@@ -120,6 +120,9 @@ fn run(
     println(
       "validate INPUT [--output REPORT.json]: full structured diagnosis, exit 1 for invalid files\nreindex INPUT --output NEW.mcap: rebuild only from a complete valid data section",
     )
+    println(
+      "scan-query INPUT [--topic TOPIC --start NS --end NS --offset N --limit N --descending]\nvalidate-range INPUT [--output REPORT.json]\nattachment-list INPUT\nattachment-extract INPUT RECORD_OFFSET NEW.bin",
+    )
     return
   }
   if options.command == "aggregate" {
@@ -247,6 +250,36 @@ fn run(
       }
       text_output(options.output, report.stringify())
     }
+    return
+  }
+  if options.command == "scan-query" {
+    let reader = @core.open_reader(scope.open(options.inputs[0]), cache_bytes=0)
+    let result = reader.query_scan(options.query)
+    let report : Json = {
+      "messages": @core.messages_json(result.messages, result.channels),
+      "diagnostics": @core.read_diagnostics_json(reader.diagnostics()),
+    }
+    text_output(options.output, report.stringify())
+    return
+  }
+  if options.command == "validate-range" {
+    let mut data_crc_verified = false
+    let count = @core.scan_source(
+      scope.open(options.inputs[0]),
+      @core.source_visitor(),
+      attachment_ref=fn(_) { () },
+      trace=event => {
+        if event is @core.DataValidated(_, checked) {
+          data_crc_verified = checked
+        }
+      },
+    )
+    let report : Json = {
+      "valid": true,
+      "messages": count.to_string(),
+      "data_crc_verified": data_crc_verified,
+    }
+    text_output(options.output, report.stringify())
     return
   }
   if options.command == "query" {
@@ -543,7 +576,13 @@ fn run(
 ///|
 fn main {
   let scope = @nodeio.file_scope(max_open=1024)
-  run(@core.parse_command(arguments()), scope) catch {
+  let args = arguments()
+  let action = () => {
+    if !run_attachment_command(args[:], scope) {
+      run(@core.parse_command(args), scope)
+    }
+  }
+  action() catch {
     @core.Invalid(reason) => {
       let error : Json = { "error": reason }
       error_exit(error.stringify(), 2)

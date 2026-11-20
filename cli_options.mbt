@@ -64,7 +64,7 @@ pub fn parse_command(args : Array[String]) -> CommandOptions raise McapError {
       "inspect", "query", "slice", "merge", "recover", "rewrite", "transform", "validate",
       "reindex", "external-merge", "recover-blocks", "stream-transform", "dataset-query",
       "aggregate", "index-build", "index-rebuild", "index-check", "index-query",
-      "job-inspect", "job-clean", "diff",
+      "job-inspect", "job-clean", "diff", "scan-query", "validate-range",
     ].contains(command) {
     raise Invalid("unknown command: \{command}")
   }
@@ -165,7 +165,7 @@ pub fn parse_command(args : Array[String]) -> CommandOptions raise McapError {
   }
   if ![
       "query", "slice", "transform", "stream-transform", "dataset-query", "aggregate",
-      "index-query",
+      "index-query", "scan-query",
     ].contains(command) &&
     (
       !topics.is_empty() ||
@@ -277,7 +277,7 @@ pub fn parse_command(args : Array[String]) -> CommandOptions raise McapError {
   if values.contains("--max-file-bytes") &&
     [
       "index-build", "index-rebuild", "index-check", "index-query", "recover-blocks",
-      "job-inspect", "job-clean",
+      "job-inspect", "job-clean", "scan-query", "validate-range",
     ].contains(command) {
     raise Invalid(
       "--max-file-bytes does not bound this streaming/index/job operation",
@@ -349,7 +349,7 @@ pub fn parse_command(args : Array[String]) -> CommandOptions raise McapError {
   }
   if ![
       "query", "dataset-query", "aggregate", "index-query", "index-check", "inspect",
-      "validate", "job-inspect", "job-clean", "diff",
+      "validate", "job-inspect", "job-clean", "diff", "scan-query", "validate-range",
     ].contains(command) &&
     output == "" {
     raise Invalid("--output is required")

@@ -41,7 +41,8 @@ pub fn source_visitor(
 
 ///|
 /// Bounded full validation in physical order. Callbacks precede final CRC validation;
-/// callers must discard side effects if validation fails.
+/// callers must discard side effects if validation fails. An attachment_ref
+/// handler receives a reference in place of the materialized attachment callback.
 pub fn scan_source(
   source : ReadSource,
   visitor : SourceVisitor,
@@ -49,6 +50,7 @@ pub fn scan_source(
   declaration_bytes~ : Int32 = 8 * 1024 * 1024,
   cancelled~ : () -> Bool = fn() { false },
   trace~ : (SourceScanEvent) -> Unit = fn(_) { () },
+  attachment_ref? : (AttachmentRef) -> Unit raise McapError,
 ) -> UInt64 raise McapError {
   if declaration_bytes < 0 {
     raise Invalid("negative scan declaration budget")
@@ -86,12 +88,17 @@ pub fn scan_source(
     declared: 0,
   }
   let global = { ..empty_log(), header: reader.declarations.header, }
+  let stream = stream_options()
+  let chunk_bytes = stream.chunk_bytes
+    .min(limits.max_decompressed_bytes)
+    .min(limits.max_record_bytes - 128)
   let writer = new_stream_writer(
     new_write_sink(fn(_) { () }),
     profile=global.header.profile,
+    options={ ..stream, chunk_bytes, },
     limits~,
   )
-  session.ingest(source, global, writer, [])
+  session.ingest(source, global, writer, [], attachment_ref?)
   session.ordinal
 }
 

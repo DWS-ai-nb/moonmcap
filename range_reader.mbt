@@ -28,6 +28,7 @@ pub struct RangeReader {
   cache : Array[CachedChunk]
   cache_budget : Int32
   fallback_budget : Int32
+  data_start : UInt64
   data_end : UInt64
   mut cache_bytes : Int32
   mut peak_cache_bytes : Int32
@@ -218,6 +219,7 @@ pub fn open_reader(
     cache: [],
     cache_budget: cache_bytes,
     fallback_budget: fallback_bytes,
+    data_start: 17UL + header.body.length().to_uint64(),
     data_end,
     cache_bytes: 0,
     peak_cache_bytes: 0,

@@ -71,7 +71,7 @@ node _build/js/debug/build/cmd/mcap/mcap.js query examples/files/zstd-summary.mc
 ## 能力与边界
 
 - **核心库（Wasm/JS）**：MCAP 0 标准记录、CRC、索引、无压缩/LZ4/Zstd、查询、变换与恢复。压缩字典、拼接帧和未声明的格式扩展不在支持范围，详见 [格式兼容表](docs/compatibility.md)。
-- **宿主与大文件路径（JS/Node）**：按需读取、磁盘索引、流式输出、外部排序、持久任务、HTTP 范围读取和可选工作线程。它们分别有预算，不能把单个预算视作总进程内存上限。
+- **宿主与大文件路径（JS/Node）**：按需读取、磁盘索引、流式输出、外部排序、持久任务、HTTP 范围读取和可选工作线程。它们分别有预算，不能把单个预算视作总进程内存上限。[大附件传输与验证](docs/attachment-stream.md)记录了分段提取、外部合并和无索引范围查询的用法。
 - **消息与外部适配**：JSON/Protobuf/ROS1/plain XCDR1 解码及回写、时间与质量处理按各自文档约束使用。Python/PyArrow/Foxglove 工具为可选适配器，不属于核心运行依赖。
 
 快速查询不等于完整校验；需要审核全文件时使用 `validate` 或 `--full`。普通查询/裁剪默认最多 **100000 条**，内存型文件处理默认编码输入预算 **64 MiB**。已有输出不覆盖；文件发布需要同目录硬链接支持。流式 stdout 失败时可能已有部分结果，需检查退出码。完整约定见 [使用边界](docs/scope.md)。

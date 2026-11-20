@@ -80,6 +80,7 @@ pub struct StreamWriter {
   summary : Array[(Byte, Bytes)]
   counts : Map[Int32, UInt64]
   mut state : WriterState
+  mut attachment_open : Bool
   mut crc : UInt32
   mut records : Int32
   mut buffered : Int32
@@ -121,6 +122,7 @@ pub fn new_stream_writer(
     summary: [],
     counts: Map([]),
     state: WriterOpen,
+    attachment_open: false,
     crc: 0U,
     records: 0,
     buffered: 0,
@@ -144,6 +146,11 @@ pub fn new_stream_writer(
 fn StreamWriter::require_open(self : StreamWriter) -> Unit raise McapError {
   if self.state != WriterOpen {
     raise Invalid("stream writer is closed")
+  }
+  if self.attachment_open {
+    raise Invalid(
+      "stream writer cannot be changed during an Attachment transfer",
+    )
   }
 }
 
@@ -501,7 +508,7 @@ pub fn StreamWriter::finish(
 ///|
 /// Leaves an unfinished output prefix; does not fabricate a successful footer.
 pub fn StreamWriter::cancel(self : StreamWriter) -> Unit {
-  if self.state == WriterOpen {
+  if self.state == WriterOpen && !self.attachment_open {
     self.pending.clear()
     self.buffered = 0
     self.state = WriterCancelled

@@ -291,7 +291,7 @@ pub fn run_artifact_batch(String, Int32, ArtifactBatchStorage, (Int32, WriteSink
 
 pub fn scan_file(Bytes, limits? : Limits) -> Array[Record] raise McapError
 
-pub fn scan_source(ReadSource, SourceVisitor, limits? : Limits, declaration_bytes? : Int32, cancelled? : () -> Bool, trace? : (SourceScanEvent) -> Unit) -> UInt64 raise McapError
+pub fn scan_source(ReadSource, SourceVisitor, limits? : Limits, declaration_bytes? : Int32, cancelled? : () -> Bool, trace? : (SourceScanEvent) -> Unit, attachment_ref? : (AttachmentRef) -> Unit raise McapError) -> UInt64 raise McapError
 
 pub fn shift_time(Log, UInt64, backwards? : Bool) -> Log raise McapError
 
@@ -439,6 +439,16 @@ pub(all) struct AttachmentIndex {
   name : String
   media_type : String
 }
+
+pub struct AttachmentRef {
+  index : AttachmentIndex
+  source : ReadSource
+  payload_at : UInt64
+  body_end : UInt64
+  header_crc : UInt32
+}
+pub fn AttachmentRef::copy_to(Self, WriteSink, cancelled? : () -> Bool) -> Bool raise McapError
+pub fn AttachmentRef::info(Self) -> AttachmentIndex
 
 pub(all) struct BinaryField {
   path : String
@@ -1443,6 +1453,7 @@ pub struct RangeReader {
   cache : Array[CachedChunk]
   cache_budget : Int32
   fallback_budget : Int32
+  data_start : UInt64
   data_end : UInt64
   mut cache_bytes : Int32
   mut peak_cache_bytes : Int32
@@ -1457,8 +1468,10 @@ pub fn RangeReader::declaration_log(Self) -> Log
 pub fn RangeReader::diagnostics(Self) -> ReadDiagnostics
 pub fn RangeReader::plan_field_query(Self, FieldIndex, JsonFilter, (ReadSource) -> String raise McapError, String, decoder? : PayloadDecoder) -> FieldQueryPlan raise McapError
 pub fn RangeReader::query(Self, Query) -> Array[Message] raise McapError
+pub fn RangeReader::query_scan(Self, Query, declaration_bytes? : Int32, result_bytes? : Int32, cancelled? : () -> Bool) -> ScanQueryResult raise McapError
 pub fn RangeReader::query_source(Self) -> QuerySource raise McapError
 pub fn RangeReader::validate_all(Self) -> Unit raise McapError
+pub fn RangeReader::visit_attachments(Self, (AttachmentRef) -> Bool raise McapError, cancelled? : () -> Bool) -> Unit raise McapError
 
 type RangeRecord
 
@@ -1640,6 +1653,11 @@ type RunHead
 
 type RunInput
 
+pub struct ScanQueryResult {
+  messages : Array[Message]
+  channels : Array[Channel]
+}
+
 pub(all) struct Schema {
   id : Int32
   name : String
@@ -1785,6 +1803,7 @@ pub struct StreamWriter {
   summary : Array[(Byte, Bytes)]
   counts : Map[Int32, UInt64]
   mut state : WriterState
+  mut attachment_open : Bool
   mut crc : UInt32
   mut records : Int32
   mut buffered : Int32
@@ -1800,11 +1819,13 @@ pub struct StreamWriter {
   mut chunk_end : UInt64
 }
 pub fn StreamWriter::add_attachment(Self, Attachment) -> Unit raise McapError
+pub fn StreamWriter::add_attachment_from(Self, ReadSource, String, String, log_time? : UInt64, create_time? : UInt64, cancelled? : () -> Bool) -> Unit raise McapError
 pub fn StreamWriter::add_channel(Self, Channel) -> Unit raise McapError
 pub fn StreamWriter::add_metadata(Self, Metadata) -> Unit raise McapError
 pub fn StreamWriter::add_schema(Self, Schema) -> Unit raise McapError
 pub fn StreamWriter::append(Self, Message) -> Unit raise McapError
 pub fn StreamWriter::cancel(Self) -> Unit
+pub fn StreamWriter::copy_attachment(Self, AttachmentRef, cancelled? : () -> Bool) -> Unit raise McapError
 pub fn StreamWriter::finish(Self) -> WriteProgress raise McapError
 pub fn StreamWriter::flush(Self) -> Unit raise McapError
 pub fn StreamWriter::progress(Self) -> WriteProgress

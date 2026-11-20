@@ -74,20 +74,51 @@ struct RangeRecord {
 }
 
 ///|
+priv struct RecordSpan {
+  opcode : Byte
+  offset : UInt64
+  length : UInt64
+  next : UInt64
+  prefix : Bytes
+}
+
+///|
+fn ReadSource::record_span(
+  self : ReadSource,
+  offset : UInt64,
+  end : UInt64,
+  limits : Limits,
+) -> RecordSpan raise McapError {
+  if offset > end || end - offset < 9UL {
+    raise Invalid("truncated record header at \{offset}")
+  }
+  let prefix = self.read_exact(offset, 9)
+  let fields = cursor(prefix, limits)
+  let opcode = fields.take(1)[0]
+  let length = fields.u64()
+  if opcode == 0 || length > end - offset - 9UL {
+    raise Invalid("invalid record span at \{offset}")
+  }
+  { opcode, offset, length, next: offset + 9UL + length, prefix, }
+}
+
+///|
+fn ReadSource::read_body(
+  self : ReadSource,
+  span : RecordSpan,
+  limits : Limits,
+) -> Bytes raise McapError {
+  let length = bounded_length(span.length, limits.max_record_bytes, "record")
+  self.read_exact(span.offset + 9UL, length)
+}
+
+///|
 fn ReadSource::record(
   self : ReadSource,
   offset : UInt64,
   end : UInt64,
   limits : Limits,
 ) -> RangeRecord raise McapError {
-  if offset > end || end - offset < 9UL {
-    raise Invalid("truncated record header at \{offset}")
-  }
-  let header = cursor(self.read_exact(offset, 9), limits)
-  let opcode = header.take(1)[0]
-  let length = bounded_length(header.u64(), limits.max_record_bytes, "record")
-  if opcode == 0 || length.to_uint64() > end - offset - 9UL {
-    raise Invalid("invalid record span at \{offset}")
-  }
-  { opcode, body: self.read_exact(offset + 9UL, length), }
+  let span = self.record_span(offset, end, limits)
+  { opcode: span.opcode, body: self.read_body(span, limits), }
 }
