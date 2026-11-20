@@ -165,3 +165,77 @@ test "sink cancellation while flushing pending messages stops further writes" {
   assert_eq(calls, before + 1)
   assert_eq(writer.progress().state, @moonmcap.WriterCancelled)
 }
+
+///|
+fn audit_copy_cancellation(
+  at_checksum : Bool,
+  cancel_session : Bool,
+) -> Unit raise {
+  let recording = @moonmcap.write_log({
+    ..@moonmcap.empty_log(),
+    attachments: [
+      {
+        log_time: 0UL,
+        create_time: 0UL,
+        name: "cancel-test",
+        media_type: "raw",
+        data: b"payload",
+      },
+    ],
+  })
+  let sessions : Array[@moonmcap.AttachmentCopy] = []
+  let mut checksum_at = 0UL
+  let mut armed = false
+  let mut cancelled = false
+  let source = @moonmcap.new_read_source(recording.length().to_uint64(), (
+    offset,
+    length,
+  ) => {
+    let target = if at_checksum { checksum_at } else { checksum_at - 7UL }
+    if armed && offset == target {
+      if cancel_session {
+        sessions[0].cancel()
+      } else {
+        cancelled = true
+      }
+    }
+    recording[offset.to_int():offset.to_int() + length].to_owned()
+  })
+  let reader = @moonmcap.open_reader(source)
+  let attachments = []
+  reader.visit_attachments(item => {
+    attachments.push(item)
+    true
+  })
+  let info = attachments[0].info()
+  checksum_at = info.offset + info.length - 4UL
+  let written = @buffer.Buffer::Buffer()
+  let copy = attachments[0].start_copy(
+    @moonmcap.new_write_sink(bytes => written.write_bytes(bytes[:])),
+  )
+  sessions.push(copy)
+  armed = true
+  try ignore(copy.step(cancelled=() => cancelled)) catch {
+    @moonmcap.Invalid(reason) => assert_true(reason.contains("cancel"))
+  } noraise {
+    _ => fail("a cancellation during source I/O cannot complete extraction")
+  }
+  assert_false(copy.progress().complete)
+  assert_false(copy.progress().crc_verified)
+  assert_eq(written.length(), if at_checksum { 7 } else { 0 })
+}
+
+///|
+test "copy cancellation during the last checksum read prevents completion" {
+  audit_copy_cancellation(true, true)
+}
+
+///|
+test "copy cancellation inside payload source precedes the next sink write" {
+  audit_copy_cancellation(false, true)
+}
+
+///|
+test "copy observes external cancellation after the last checksum read" {
+  audit_copy_cancellation(true, false)
+}

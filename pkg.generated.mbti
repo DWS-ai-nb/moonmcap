@@ -293,7 +293,7 @@ pub fn resumable_chunk_pipeline(Array[ReadSource], SortStorage, WriteSink, (Read
 
 pub fn resumable_merge(Array[ReadSource], SortStorage, WriteSink, (ReadSource) -> String raise McapError, (Bytes) -> Unit raise McapError, checkpoint? : Bytes, options? : ExternalOptions, cancelled? : () -> Bool) -> ExternalReport raise McapError
 
-pub fn resume_attachment_exports(AttachmentExportPlan, (AttachmentIndex) -> String raise McapError, Bytes, (AttachmentExportReceipt) -> Bool raise McapError, journal_bytes? : Int32) -> AttachmentExportJournal raise McapError
+pub fn resume_attachment_exports(AttachmentExportPlan, (AttachmentIndex) -> String raise McapError, Bytes, (AttachmentExportReceipt) -> Bool raise McapError, reconcile_pending? : (AttachmentExportReceipt) -> Bool raise McapError, journal_bytes? : Int32) -> AttachmentExportJournal raise McapError
 
 pub fn ros1_decoder(String, Bytes, options? : CdrOptions) -> Ros1Decoder raise McapError
 
@@ -443,8 +443,8 @@ pub fn Attachment::not_equal(Self, Self) -> Bool
 pub fn Attachment::to_repr(Self) -> @debug.Repr
 
 pub struct AttachmentCatalog {
-  entries : Array[AttachmentRef]
   evidence : AttachmentCatalogInfo
+  // private fields
 }
 pub fn AttachmentCatalog::find(Self, UInt64) -> AttachmentRef?
 pub fn AttachmentCatalog::info(Self) -> AttachmentCatalogInfo
@@ -503,15 +503,8 @@ pub struct AttachmentExportDestination {
   abort : () -> Unit raise McapError
 }
 
-type AttachmentExportEntry
-
 pub struct AttachmentExportJournal {
-  plan : AttachmentExportPlan
-  signature : Bytes
-  receipts : Array[AttachmentExportReceipt]
-  budget : Int32
-  mut busy : Bool
-  mut needs_save : Bool
+  // private fields
 }
 pub fn AttachmentExportJournal::info(Self) -> AttachmentExportJournalInfo
 pub fn AttachmentExportJournal::receipts(Self) -> Array[AttachmentExportReceipt]
@@ -527,9 +520,7 @@ pub struct AttachmentExportJournalInfo {
 }
 
 pub struct AttachmentExportPlan {
-  entries : Array[AttachmentExportEntry]
-  payload_bytes : UInt64
-  mut busy : Bool
+  // private fields
 }
 pub fn AttachmentExportPlan::export_files(Self, (String, AttachmentIndex) -> AttachmentExportDestination raise McapError, start_index? : Int32, max_files? : Int32, on_published? : (AttachmentExportReceipt) -> Unit raise McapError, cancelled? : () -> Bool) -> AttachmentExportReport raise McapError
 pub fn AttachmentExportPlan::info(Self) -> AttachmentExportPlanInfo
@@ -593,10 +584,10 @@ pub fn AttachmentRef::start_copy(Self, WriteSink, limits? : Limits) -> Attachmen
 pub fn AttachmentRef::verify_payload(Self, limits? : Limits, cancelled? : () -> Bool) -> AttachmentPayloadCheck raise McapError
 
 pub struct AttachmentSelection {
-  entries : Array[AttachmentRef]
   matching_records : Int32
   selected_bytes : UInt64
   next_offset : Int32?
+  // private fields
 }
 pub fn AttachmentSelection::copy_into(Self, StreamWriter, cancelled? : () -> Bool) -> Unit raise McapError
 pub fn AttachmentSelection::items(Self) -> Array[AttachmentRef]

@@ -6,6 +6,45 @@ fn async_bytes_source(bytes : Bytes) -> @asyncio.AsyncSource {
 }
 
 ///|
+async test "external cancellation during final checksum cannot complete async copy" {
+  let recording = async_attachment_fixture(b"payload")
+  let mut checksum_at = 0UL
+  let mut armed = false
+  let mut cancelled = false
+  let source = @asyncio.new_source(recording.length().to_uint64(), fn(
+    offset,
+    length,
+  ) {
+    if armed && offset == checksum_at {
+      cancelled = true
+    }
+    recording[offset.to_int():offset.to_int() + length].to_owned()
+  })
+  let reader = @asyncio.open_attachment_reader(source)
+  let attachments = []
+  reader.visit_attachments(item => {
+    attachments.push(item)
+    true
+  })
+  let info = attachments[0].info()
+  checksum_at = info.offset + info.length - 4UL
+  let aborted = [0]
+  let copy = attachments[0].start_copy(
+    @asyncio.new_sink(fn(_) { () }, abort=() => aborted[0] += 1),
+  )
+  armed = true
+  try ignore(copy.step(cancelled=() => cancelled)) catch {
+    @mcap.Invalid(reason) => assert_true(reason.contains("cancel"))
+    error => fail("\{error}")
+  } noraise {
+    _ => fail("the final checksum must observe cancellation")
+  }
+  assert_false(copy.progress().state is @asyncio.AttachmentCopyComplete)
+  assert_false(copy.progress().crc_verified)
+  assert_eq(aborted[0], 1)
+}
+
+///|
 async test "async copy checkpoints resume with bounded bytes per call" {
   let payload = Bytes::makei(140003, i => (i % 199).to_byte())
   let recording = async_attachment_fixture(payload)

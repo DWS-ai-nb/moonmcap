@@ -96,9 +96,25 @@ fn AttachmentCopy::require_idle(self : AttachmentCopy) -> Unit raise McapError {
 }
 
 ///|
-fn AttachmentCopy::verify_end(self : AttachmentCopy) -> Unit raise McapError {
+fn AttachmentCopy::require_active(
+  self : AttachmentCopy,
+  cancelled : () -> Bool,
+) -> Unit raise McapError {
+  check_range_cancel(cancelled)
+  if !(self.phase is CopyActive) {
+    raise Invalid("Attachment copy cancelled during I/O callback")
+  }
+}
+
+///|
+fn AttachmentCopy::verify_end(
+  self : AttachmentCopy,
+  cancelled : () -> Bool,
+) -> Unit raise McapError {
   let attachment = self.attachment
-  if attachment.checksum() != self.expected_crc {
+  let actual_crc = attachment.checksum()
+  self.require_active(cancelled)
+  if actual_crc != self.expected_crc {
     raise Invalid("Attachment checksum changed during copy")
   }
   if self.expected_crc != 0U && self.payload_crc != self.expected_crc {
@@ -138,7 +154,7 @@ pub fn AttachmentCopy::step(
   let mut remaining = max_bytes
   let mut windows = 0
   while self.copied < total && remaining != 0UL && windows < max_windows {
-    check_range_cancel(cancelled)
+    self.require_active(cancelled)
     let capacity = if total - self.copied < remaining {
       total - self.copied
     } else {
@@ -153,19 +169,17 @@ pub fn AttachmentCopy::step(
       attachment.payload_at + self.copied,
       size,
     )
-    check_range_cancel(cancelled)
+    self.require_active(cancelled)
     self.sink.write(bytes)
-    if self.phase is CopyFailed {
-      raise Invalid("Attachment copy cancelled during sink callback")
-    }
+    self.require_active(cancelled)
     self.payload_crc = crc32_extend(self.payload_crc, bytes)
     self.copied += size.to_uint64()
     remaining -= size.to_uint64()
     windows += 1
   }
-  check_range_cancel(cancelled)
+  self.require_active(cancelled)
   if self.copied == total {
-    self.verify_end()
+    self.verify_end(cancelled)
   }
   self.progress()
 }

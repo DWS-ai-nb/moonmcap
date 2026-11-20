@@ -116,9 +116,12 @@ pub fn AsyncAttachmentCopy::cancel(self : AsyncAttachmentCopy) -> Unit {
 }
 
 ///|
-async fn AsyncAttachmentCopy::finish(self : AsyncAttachmentCopy) -> Unit {
+async fn AsyncAttachmentCopy::finish(
+  self : AsyncAttachmentCopy,
+  cancelled : () -> Bool,
+) -> Unit {
   let actual = self.attachment.checksum()
-  self.active(fn() { false })
+  self.active(cancelled)
   if actual != self.expected_crc {
     raise @mcap.io_error("Attachment checksum changed during async extraction")
   }
@@ -189,7 +192,7 @@ pub async fn AsyncAttachmentCopy::step(
     }
     self.active(cancelled)
     if self.copied == attachment.info.data_size {
-      self.finish()
+      self.finish(cancelled)
     }
     self.progress()
   } catch {

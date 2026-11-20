@@ -40,8 +40,8 @@
       "file": "asyncio/attachment_stream_checkpoint.mbt",
       "declaration": "AsyncAttachmentCopy::step",
       "warning": "fragile_catch_all",
-      "scope_sha256": "f85a6b57949bea682aefcfd8c660073783c28b99cb246a7415552e16e47c2c76",
-      "reason": "Inspect task cancellation separately from ordinary I/O failure; errdefer performs session and sink cleanup."
+      "scope_sha256": "dee3c6e092ad6f08be086431fa62d179db641dbdf627e539ac4294642a62f4d5",
+      "reason": "Inspect task cancellation separately from I/O failure after awaited reads, including the final checksum; errdefer closes the session and sink."
     },
     {
       "file": "asyncio/attachment_stream_writer.mbt",
@@ -112,13 +112,6 @@
       "warning": "deprecated_syntax",
       "scope_sha256": "7a223e08ed041708607eb97e81f4cbc604a5969e52937167aa516e77fed045d0",
       "reason": "Keep suffix trait derivation for moonc 0.10.17, which cannot derive traits with #derive. Newer compilers deprecate this syntax on this declaration."
-    },
-    {
-      "file": "attachment_batch.mbt",
-      "declaration": "AttachmentExportEntry",
-      "warning": "missing_priv",
-      "scope_sha256": "2ec5fa3dab66a7ef7025dd7ecbdf94466ed469d2109cb457ee078b3f7f9b7f7a",
-      "reason": "An internal entry type is referenced by the read-only public export plan; follow the existing opaque storage pattern."
     },
     {
       "file": "binary.mbt",

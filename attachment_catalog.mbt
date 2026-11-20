@@ -12,7 +12,7 @@ pub struct AttachmentCatalogInfo {
 
 ///|
 pub struct AttachmentCatalog {
-  entries : Array[AttachmentRef]
+  priv entries : Array[AttachmentRef]
   evidence : AttachmentCatalogInfo
 }
 
@@ -37,7 +37,7 @@ pub fn all_attachments() -> AttachmentQuery {
 
 ///|
 pub struct AttachmentSelection {
-  entries : Array[AttachmentRef]
+  priv entries : Array[AttachmentRef]
   matching_records : Int32
   selected_bytes : UInt64
   next_offset : Int32?

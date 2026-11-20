@@ -26,17 +26,16 @@ pub struct AttachmentExportReceipt {
 }
 
 ///|
-#warnings("-missing_priv")
-struct AttachmentExportEntry {
+priv struct AttachmentExportEntry {
   destination : String
   attachment : AttachmentRef
 }
 
 ///|
 pub struct AttachmentExportPlan {
-  entries : Array[AttachmentExportEntry]
-  payload_bytes : UInt64
-  mut busy : Bool
+  priv entries : Array[AttachmentExportEntry]
+  priv payload_bytes : UInt64
+  priv mut busy : Bool
 }
 
 ///|
@@ -106,6 +105,9 @@ fn export_attachment_entry(
   entry : AttachmentExportEntry,
   create : (String, AttachmentIndex) -> AttachmentExportDestination raise McapError,
   cancelled : () -> Bool,
+  before_publish~ : (AttachmentExportReceipt) -> Unit raise McapError = fn(_) {
+    ()
+  },
 ) -> AttachmentExportReceipt raise McapError {
   let info = entry.attachment.info()
   check_range_cancel(cancelled)
@@ -119,14 +121,16 @@ fn export_attachment_entry(
     }
     let verified = entry.attachment.copy_to(stage.sink, cancelled~)
     check_range_cancel(cancelled)
-    (stage.publish)()
-    Ok({
+    let receipt = {
       destination: entry.destination,
       source: info,
       checksum_verified: verified,
       range_reads: source.calls - before_reads,
       bytes_read: source.bytes_read - before_bytes,
-    })
+    }
+    before_publish(receipt)
+    (stage.publish)()
+    Ok(receipt)
   } catch {
     error => Err(error)
   }

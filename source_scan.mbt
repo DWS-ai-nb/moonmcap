@@ -112,7 +112,14 @@ pub fn scan_source(
   cancelled~ : () -> Bool = fn() { false },
   trace~ : (SourceScanEvent) -> Unit = fn(_) { () },
 ) -> UInt64 raise McapError {
-  scan_source_streaming(source, visitor, limits~, declaration_bytes~, cancelled~, trace~)
+  scan_source_streaming(
+    source,
+    visitor,
+    limits~,
+    declaration_bytes~,
+    cancelled~,
+    trace~,
+  )
 }
 
 ///|

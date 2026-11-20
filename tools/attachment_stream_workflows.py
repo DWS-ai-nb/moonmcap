@@ -227,6 +227,20 @@ def main():
         work = Path(work).resolve()
         assert work.is_relative_to(directory.resolve())
         report = exercise(baseline, candidate, work)
+    candidate_revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True,
+    )
+    candidate_changes = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=no"],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    report["candidate_commit"] = (
+        candidate_revision.stdout.strip() if candidate_revision.returncode == 0 else None
+    )
+    report["candidate_tracked_changes"] = (
+        bool(candidate_changes.stdout.strip()) if candidate_changes.returncode == 0 else None
+    )
+    report["workflow_sha256"] = hashes(Path(__file__))
     report_path = directory / "attachment-stream-report.json"
     report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))

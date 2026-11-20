@@ -82,3 +82,26 @@ test "full attachment verification rejects corruption outside a preview window" 
     _ => fail("corruption after preview must be detected by full verification")
   }
 }
+
+///|
+test "mutating selected item arrays cannot change catalogue or selection" {
+  let bytes = @moonmcap.write_log({
+    ..@moonmcap.empty_log(),
+    attachments: [
+      {
+        log_time: 1UL,
+        create_time: 0UL,
+        name: "retained",
+        media_type: "raw",
+        data: b"payload",
+      },
+    ],
+  })
+  let catalogue = @moonmcap.open_reader(@moonmcap.memory_source(bytes)).attachment_catalog()
+  let selected = catalogue.select()
+  let detached = selected.items()
+  detached.clear()
+  assert_eq(selected.items().length(), 1)
+  assert_eq(catalogue.info().records, 1)
+  assert_eq(catalogue.select().items().length(), 1)
+}
