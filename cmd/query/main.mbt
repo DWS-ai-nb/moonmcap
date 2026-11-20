@@ -25,6 +25,8 @@ extern "js" fn worker_path() -> String =
 
 ///|
 async fn main {
+  // Observe cancellation before opening inputs or outputs.
+  @async.pause()
   let sources : Array[@aio.AsyncSource] = []
   let caches : Array[@aio.CachedHttpSource] = []
   let pools : Array[@aio.WorkerPool] = []

@@ -17,6 +17,8 @@ extern "js" fn error_exit(text : String) -> Unit =
 
 ///|
 async fn main {
+  // Observe cancellation before opening inputs or outputs.
+  @async.pause()
   let sources : Array[@aio.AsyncSource] = []
   let transactions : Array[@nodeio.OutputTransaction] = []
   try {

@@ -25,6 +25,8 @@ extern "js" fn stdout_text(text : String) -> @js_async.Promise[Unit] =
 
 ///|
 async fn main {
+  // Observe cancellation before opening inputs or outputs.
+  @async.pause()
   let sources : Array[@aio.AsyncSource] = []
   let pools : Array[@aio.WorkerPool] = []
   let outputs : Array[@nodeio.OutputTransaction] = []

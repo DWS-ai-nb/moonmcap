@@ -21,6 +21,8 @@ extern "js" fn report(text : String) -> Unit =
 
 ///|
 async fn main {
+  // Observe cancellation before opening inputs or outputs.
+  @async.pause()
   let sources : Array[@aio.AsyncSource] = []
   let caches : Array[@aio.CachedHttpSource] = []
   let outputs : Array[@nodeio.OutputTransaction] = []

@@ -350,6 +350,8 @@ jobs:
         run: |
           moon add --upgrade moonbitlang/async@0.22.10
           python -c "from pathlib import Path; assert 'moonbitlang/async@0.22.10' in Path('moon.mod').read_text(encoding='utf-8'), 'async dependency upgrade did not apply'"
+          # Clean source smoke tests export the index, including this selected dependency.
+          git add moon.mod
       - run: moon update
       - run: python tools/runtime_audit.py
       - run: moon check --target ${{ matrix.target }} --deny-warn
