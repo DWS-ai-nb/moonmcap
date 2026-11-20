@@ -20,6 +20,8 @@ pub fn new_source(UInt64, async (UInt64, Int32) -> Bytes, abort? : () -> Unit) -
 
 pub async fn new_writer(AsyncSink, profile? : String, options? : @moonmcap.StreamOptions, limits? : @moonmcap.Limits, queue_bytes? : Int32) -> AsyncWriter
 
+pub async fn open_attachment_reader(AsyncSource, limits? : @moonmcap.Limits, summary_bytes? : Int32) -> AsyncAttachmentReader
+
 pub async fn open_cached_http(String, String, options? : HttpCacheOptions) -> CachedHttpSource
 
 pub fn open_dataset(Array[AsyncQuerySource], limits? : @moonmcap.Limits, declaration_bytes? : Int32, max_sources? : Int32) -> AsyncDataset raise @moonmcap.McapError
@@ -57,6 +59,68 @@ pub fn worker_options() -> WorkerOptions
 // Errors
 
 // Types and methods
+pub struct AsyncAttachmentCopy {
+  attachment : AsyncAttachmentRef
+  sink : AsyncSink
+  expected_crc : UInt32
+  first_metrics : AsyncReadMetrics
+  mut copied : UInt64
+  mut payload_crc : UInt32
+  mut state : AsyncAttachmentCopyState
+  mut busy : Bool
+}
+pub fn AsyncAttachmentCopy::cancel(Self) -> Unit
+pub fn AsyncAttachmentCopy::checkpoint(Self) -> Bytes raise @moonmcap.McapError
+pub fn AsyncAttachmentCopy::progress(Self) -> AsyncAttachmentCopyProgress
+pub async fn AsyncAttachmentCopy::step(Self, max_bytes? : UInt64, max_windows? : Int32, cancelled? : () -> Bool) -> AsyncAttachmentCopyProgress
+
+pub struct AsyncAttachmentCopyProgress {
+  state : AsyncAttachmentCopyState
+  copied : UInt64
+  total : UInt64
+  crc_verified : Bool
+  read_calls : Int32
+  bytes_read : UInt64
+}
+
+pub(all) enum AsyncAttachmentCopyState {
+  AttachmentCopyActive
+  AttachmentCopyComplete
+  AttachmentCopyFailed
+  AttachmentCopyCancelled
+} derive(Eq)
+pub fn AsyncAttachmentCopyState::equal(Self, Self) -> Bool
+pub fn AsyncAttachmentCopyState::not_equal(Self, Self) -> Bool
+
+pub struct AsyncAttachmentReader {
+  source : AsyncSource
+  limits : @moonmcap.Limits
+  data_start : UInt64
+  data_end : UInt64
+}
+pub async fn AsyncAttachmentReader::find_attachment(Self, UInt64) -> AsyncAttachmentRef
+pub async fn AsyncAttachmentReader::visit_attachments(Self, async (AsyncAttachmentRef) -> Bool, cancelled? : () -> Bool) -> Unit
+
+pub struct AsyncAttachmentRef {
+  source : AsyncSource
+  limits : @moonmcap.Limits
+  info : @moonmcap.AttachmentIndex
+  payload_at : UInt64
+  record_end : UInt64
+  header_crc : UInt32
+}
+pub async fn AsyncAttachmentRef::copy_to(Self, AsyncSink, cancelled? : () -> Bool) -> AsyncAttachmentTransfer
+pub fn AsyncAttachmentRef::info(Self) -> @moonmcap.AttachmentIndex
+pub async fn AsyncAttachmentRef::resume_copy(Self, AsyncSource, AsyncSink, Bytes, cancelled? : () -> Bool) -> AsyncAttachmentCopy
+pub async fn AsyncAttachmentRef::start_copy(Self, AsyncSink) -> AsyncAttachmentCopy
+
+pub struct AsyncAttachmentTransfer {
+  payload_bytes : UInt64
+  crc_verified : Bool
+  read_calls : Int32
+  bytes_read : UInt64
+}
+
 pub struct AsyncCursor {
   source : AsyncSource
   cursor : @moonmcap.FileCursor
@@ -255,11 +319,13 @@ pub struct AsyncWriter {
   mut busy : Bool
 }
 pub async fn AsyncWriter::add_attachment(Self, @moonmcap.Attachment) -> Unit
+pub async fn AsyncWriter::add_attachment_from(Self, AsyncSource, String, String, log_time? : UInt64, create_time? : UInt64, cancelled? : () -> Bool) -> Unit
 pub async fn AsyncWriter::add_channel(Self, @moonmcap.Channel) -> Unit
 pub async fn AsyncWriter::add_metadata(Self, @moonmcap.Metadata) -> Unit
 pub async fn AsyncWriter::add_schema(Self, @moonmcap.Schema) -> Unit
 pub async fn AsyncWriter::append(Self, @moonmcap.Message) -> Unit
 pub fn AsyncWriter::cancel(Self) -> Unit
+pub async fn AsyncWriter::copy_attachment(Self, AsyncAttachmentRef, cancelled? : () -> Bool) -> Unit
 pub async fn AsyncWriter::finish(Self) -> AsyncWriteProgress
 pub async fn AsyncWriter::flush(Self) -> Unit
 pub fn AsyncWriter::progress(Self) -> AsyncWriteProgress

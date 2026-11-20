@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[1]
+READONLY_FIELDS = {}
 
 
 def compact(text):
@@ -50,11 +51,33 @@ def declarations(text):
                 index += 1
                 block.append(part)
                 depth += part.count("{") - part.count("}")
-            result.add(compact("\n".join(block)))
+            declaration = compact("\n".join(block))
+            result.add(declaration)
+            if line.startswith("pub struct ") and depth == 0:
+                READONLY_FIELDS[declaration] = [compact(field) for field in block[1:-1]]
         elif line.startswith(("pub impl ", "pub let ", "pub const ")):
             result.add(compact(line))
         attributes = []
     return result
+
+
+def compatible_readonly_struct(before, current):
+    """Read-only records cannot be constructed by callers; existing fields remain readable."""
+    match = re.fullmatch(r"pubstruct(\w+)\{(.*)\}", before)
+    if match is None:
+        return False
+    prefix = "pubstruct" + match[1] + "{"
+    for candidate in current:
+        if not candidate.startswith(prefix) or not candidate.endswith("}"):
+            continue
+        # Compiler output retains one field per line. Reconstruct exactly the
+        # old declaration with fields that occur in it; changed types, removed
+        # fields and constructible pub(all) records still fail the audit.
+        available = READONLY_FIELDS.get(candidate, [])
+        retained = [field for field in available if field in match[2]]
+        if available and prefix + "".join(retained) + "}" == before:
+            return True
+    return False
 
 
 def main():
@@ -64,7 +87,8 @@ def main():
     for name, item in baseline["interfaces"].items():
         current = declarations((ROOT / name).read_text(encoding="utf-8"))
         wanted = set(item["declarations"])
-        missing = sorted(wanted - current)
+        missing = sorted(item for item in wanted - current
+                         if not compatible_readonly_struct(item, current))
         assert not missing, f"published interface changed in {name}: {missing[:8]}"
         rows.append({"interface": name, "retained_declarations": len(wanted), "additions": len(current - wanted),
                      "baseline_interface_sha256": item["sha256"]})

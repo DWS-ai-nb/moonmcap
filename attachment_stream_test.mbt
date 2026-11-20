@@ -102,7 +102,7 @@ test "attachment streaming preserves data beyond the record allocation limit" {
   assert_eq(largest_read, 65536)
   assert_eq(largest_write, 65536)
   let mut seen = 0
-  let message_count = @moonmcap.scan_source(
+  let message_count = @moonmcap.scan_source_streaming(
     source,
     @moonmcap.source_visitor(),
     limits=attachment_test_limits,

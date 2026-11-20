@@ -160,7 +160,7 @@ pub fn RangeReader::query_scan(
     return { messages: [], channels: [], }
   }
   let state : ScanQuery = {
-    query,
+    query: { ..query, topics: query.topics.copy(), },
     limits: self.limits,
     declarations: empty_log(),
     matched_channels: Map([]),

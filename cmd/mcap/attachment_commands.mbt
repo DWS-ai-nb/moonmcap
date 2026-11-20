@@ -44,6 +44,62 @@ fn run_attachment_command(
   scope : @nodeio.FileScope,
 ) -> Bool raise @core.McapError {
   match args {
+    ["attachment-catalog", path] => {
+      let reader = @core.open_reader(scope.open(path), cache_bytes=0)
+      let catalog = reader.attachment_catalog(verify_coverage=true)
+      let info = catalog.info()
+      let entries = catalog
+        .select(limit=1000)
+        .items()
+        .map(a => attachment_json(a.info()))
+      let report : Json = {
+        "attachments": entries,
+        "total": info.records,
+        "payload_bytes": info.payload_bytes.to_string(),
+        "coverage_checked": info.coverage_checked,
+        "used_index": info.used_index,
+      }
+      println(report.stringify())
+      true
+    }
+    ["attachment-range", path, offset, start, length] => {
+      let reader = @core.open_reader(scope.open(path), cache_bytes=0)
+      let catalog = reader.attachment_catalog(verify_coverage=true)
+      guard catalog.find(@core.parse_decimal(offset)) is Some(item) else {
+        raise @core.io_error("Attachment offset was not found")
+      }
+      let size = @core.parse_decimal(length)
+      if size > 65536UL {
+        raise @core.io_error("preview exceeds 64 KiB")
+      }
+      let bytes = item.read_range(@core.parse_decimal(start), size.to_int())
+      let report : Json = {
+        "data_hex": @core.encode_hex(bytes),
+        "full_payload_crc_verified": false,
+      }
+      println(report.stringify())
+      true
+    }
+    ["attachment-export", path, directory] => {
+      let reader = @core.open_reader(scope.open(path), cache_bytes=0)
+      let selection = reader
+        .attachment_catalog(verify_coverage=true)
+        .select(limit=1000)
+      let report = @nodeio.export_attachments(selection, directory)
+      let receipts = report.receipts.map(receipt => {
+        Json::object({
+          "destination": receipt.destination,
+          "attachment": attachment_json(receipt.source),
+          "crc_verified": receipt.checksum_verified,
+        })
+      })
+      let result : Json = {
+        "receipts": receipts,
+        "payload_bytes": report.payload_bytes.to_string(),
+      }
+      println(result.stringify())
+      true
+    }
     ["attachment-list", path] => {
       let reader = @core.open_reader(scope.open(path), cache_bytes=0)
       let entries = []
@@ -78,6 +134,14 @@ fn run_attachment_command(
       raise @core.io_error(
         "usage: attachment-extract INPUT RECORD_OFFSET NEW.bin",
       )
+    ["attachment-catalog", ..] =>
+      raise @core.io_error("usage: attachment-catalog INPUT")
+    ["attachment-range", ..] =>
+      raise @core.io_error(
+        "usage: attachment-range INPUT RECORD_OFFSET START LENGTH",
+      )
+    ["attachment-export", ..] =>
+      raise @core.io_error("usage: attachment-export INPUT EXISTING_DIRECTORY")
     _ => false
   }
 }

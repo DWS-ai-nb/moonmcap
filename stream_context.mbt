@@ -195,7 +195,7 @@ pub fn copy_clip_auxiliary(
   limits~ : Limits = default_limits(),
   cancelled~ : () -> Bool = fn() { false },
 ) -> UInt64 raise McapError {
-  scan_source(
+  scan_source_streaming(
     source,
     source_visitor(metadata=m => {
       if metadata_names.is_empty() || metadata_names.contains(m.name) {

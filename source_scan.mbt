@@ -43,7 +43,7 @@ pub fn source_visitor(
 /// Bounded full validation in physical order. Callbacks precede final CRC validation;
 /// callers must discard side effects if validation fails. An attachment_ref
 /// handler receives a reference in place of the materialized attachment callback.
-pub fn scan_source(
+pub fn scan_source_streaming(
   source : ReadSource,
   visitor : SourceVisitor,
   limits~ : Limits = default_limits(),
@@ -100,6 +100,19 @@ pub fn scan_source(
   )
   session.ingest(source, global, writer, [], attachment_ref?)
   session.ordinal
+}
+
+///|
+/// Materialized-attachment scanning retains the existing callable signature.
+pub fn scan_source(
+  source : ReadSource,
+  visitor : SourceVisitor,
+  limits~ : Limits = default_limits(),
+  declaration_bytes~ : Int32 = 8 * 1024 * 1024,
+  cancelled~ : () -> Bool = fn() { false },
+  trace~ : (SourceScanEvent) -> Unit = fn(_) { () },
+) -> UInt64 raise McapError {
+  scan_source_streaming(source, visitor, limits~, declaration_bytes~, cancelled~, trace~)
 }
 
 ///|

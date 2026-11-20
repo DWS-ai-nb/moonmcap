@@ -65,6 +65,18 @@ def cli(executable, *args, failure=None):
     return json.loads(result.stdout)
 
 
+def wasm_cli(input_file, operation, *args):
+    result = subprocess.run(
+        [os.environ.get("NODE", "node"), str(ROOT / "tools/attachment_wasm.mjs"),
+         str(input_file), operation, *map(str, args)],
+        cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+    )
+    assert result.returncode == 0, result
+    parsed = json.loads(result.stdout)
+    assert parsed["status"] == "ok", parsed
+    return parsed
+
+
 def verify_merge(path, payload_hash):
     with path.open("rb") as source:
         reader = NonSeekingReader(source, validate_crcs=True)
@@ -123,6 +135,22 @@ def exercise(baseline, candidate, work):
     assert extracted.stat().st_size == ATTACHMENT_SIZE and hashes(extracted) == payload_hash
     cli(candidate, "attachment-extract", large, offset, extracted, failure="exist")
     assert hashes(extracted) == payload_hash
+    wasm_query = wasm_cli(large, "query", "/events", "20", "20")
+    assert wasm_query["messages"] == query["messages"]
+    wasm_list = wasm_cli(large, "list")
+    assert wasm_list["attachments"] == listed["attachments"]
+    preview = wasm_cli(large, "range", offset, "65534", "8")
+    assert preview["data_hex"] == bytes(range(254, 256)).hex() + bytes(range(6)).hex()
+    assert not preview["payload_crc_verified"]
+    wasm_output = work / "wasm-attachment.bin"
+    wasm_extract = wasm_cli(large, "extract", offset, wasm_output)
+    assert wasm_extract["payload_crc_verified"]
+    assert hashes(wasm_output) == payload_hash
+    export_dir = work / "exports"
+    export_dir.mkdir()
+    batch = cli(candidate, "attachment-export", large, export_dir)
+    assert len(batch["receipts"]) == 1
+    assert hashes(Path(batch["receipts"][0]["destination"])) == payload_hash
 
     runs = work / "runs"
     runs.mkdir()
@@ -175,6 +203,9 @@ def exercise(baseline, candidate, work):
         "corrupt_extraction": bad_extract, "corrupt_merge": bad_merge,
         "corrupt_data_crc": bad_data_crc,
         "destination_preserved": True, "candidate_full_validation": True,
+        "wasm_real_file_query_and_extraction": True,
+        "wasm_extracted_sha256": hashes(wasm_output),
+        "node_export_reference_hash": payload_hash,
     }
 
 

@@ -160,6 +160,9 @@ fn StreamWriter::send(
   bytes : Bytes,
   data : Bool,
 ) -> Unit raise McapError {
+  if self.state != WriterOpen {
+    raise Invalid("stream writer is closed during output")
+  }
   if bytes.length().to_uint64() > 18446744073709551615UL - self.sink.position {
     self.state = WriterFailed
     raise Invalid("output offset overflow")
@@ -169,6 +172,9 @@ fn StreamWriter::send(
       self.state = WriterFailed
       raise Invalid(reason)
     }
+  }
+  if self.state != WriterOpen {
+    raise Invalid("stream writer was cancelled during output")
   }
   self.sink.position += bytes.length().to_uint64()
   if data {
@@ -508,7 +514,7 @@ pub fn StreamWriter::finish(
 ///|
 /// Leaves an unfinished output prefix; does not fabricate a successful footer.
 pub fn StreamWriter::cancel(self : StreamWriter) -> Unit {
-  if self.state == WriterOpen && !self.attachment_open {
+  if self.state == WriterOpen {
     self.pending.clear()
     self.buffered = 0
     self.state = WriterCancelled

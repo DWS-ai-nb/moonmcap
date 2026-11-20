@@ -1,0 +1,11 @@
+supported_targets = "wasm"
+
+import {
+  "LilaLola67/moonmcap" @mcap,
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/json",
+}
+
+options(
+  link: { "wasm": { "exports": [ "attachment_request" ] } },
+)

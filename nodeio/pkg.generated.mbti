@@ -6,7 +6,11 @@ import {
 }
 
 // Values
+pub fn attachment_export_plan(@moonmcap.AttachmentSelection, String, prefix? : String, cancelled? : () -> Bool) -> NodeAttachmentExportPlan raise @moonmcap.McapError
+
 pub fn create_sink(String) -> @moonmcap.WriteSink raise @moonmcap.McapError
+
+pub fn export_attachments(@moonmcap.AttachmentSelection, String, prefix? : String, start_index? : Int32, max_files? : Int32, on_published? : (@moonmcap.AttachmentExportReceipt) -> Unit raise @moonmcap.McapError, cancelled? : () -> Bool) -> @moonmcap.AttachmentExportReport raise @moonmcap.McapError
 
 pub fn file_identity_token(String) -> String raise @moonmcap.McapError
 
@@ -46,6 +50,8 @@ pub struct ArtifactDirectory {
 }
 pub fn ArtifactDirectory::close(Self) -> Unit raise @moonmcap.McapError
 pub fn ArtifactDirectory::storage(Self) -> @moonmcap.ArtifactBatchStorage
+
+type AttachmentExportDirectory
 
 type DigestState
 
@@ -92,6 +98,14 @@ pub fn MergeJob::save(Self, Bytes) -> Unit raise @moonmcap.McapError
 pub fn MergeJob::storage(Self) -> @moonmcap.SortStorage
 
 type NativeFile
+
+pub struct NodeAttachmentExportPlan {
+  plan : @moonmcap.AttachmentExportPlan
+  directory : AttachmentExportDirectory
+}
+pub fn NodeAttachmentExportPlan::export_files(Self, start_index? : Int32, max_files? : Int32, on_published? : (@moonmcap.AttachmentExportReceipt) -> Unit raise @moonmcap.McapError, cancelled? : () -> Bool) -> @moonmcap.AttachmentExportReport raise @moonmcap.McapError
+pub fn NodeAttachmentExportPlan::info(Self) -> @moonmcap.AttachmentExportPlanInfo
+pub fn NodeAttachmentExportPlan::targets(Self) -> Array[(String, @moonmcap.AttachmentIndex)]
 
 pub struct OutputTransaction {
   target : String

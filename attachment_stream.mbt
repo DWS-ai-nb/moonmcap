@@ -227,11 +227,44 @@ fn StreamWriter::write_attachment(
   fields : AttachmentIndex,
   supply : ((Bytes) -> Unit raise McapError) -> Unit raise McapError,
 ) -> Unit raise McapError {
+  let transfer = self.begin_attachment(
+    fields.name,
+    fields.media_type,
+    fields.data_size,
+    log_time=fields.log_time,
+    create_time=fields.create_time,
+  )
+  errdefer transfer.cancel()
+  supply(bytes => transfer.write(bytes))
+  transfer.finish()
+}
+
+///|
+pub struct AttachmentWrite {
+  writer : StreamWriter
+  index : AttachmentIndex
+  mut left : UInt64
+  mut crc : UInt32
+  mut active : Bool
+  mut busy : Bool
+}
+
+///|
+/// Begin a single streamed record. Finish or cancel this session before
+/// another writer operation. Each write is synchronously consumed.
+pub fn StreamWriter::begin_attachment(
+  self : StreamWriter,
+  name : String,
+  media_type : String,
+  data_size : UInt64,
+  log_time~ : UInt64 = 0UL,
+  create_time~ : UInt64 = 0UL,
+) -> AttachmentWrite raise McapError {
   self.require_open()
   let header = @buffer.Buffer::Buffer()
-  header.write_uint64_le(fields.log_time)
-  header.write_uint64_le(fields.create_time)
-  for text in [fields.name, fields.media_type] {
+  header.write_uint64_le(log_time)
+  header.write_uint64_le(create_time)
+  for text in [name, media_type] {
     let bytes = @utf8.encode(text[:])
     if bytes.length() > self.limits.max_string_bytes ||
       bytes.length() > self.limits.max_record_bytes - header.length() - 12 {
@@ -240,25 +273,33 @@ fn StreamWriter::write_attachment(
     header.write_uint_le(bytes.length().reinterpret_as_uint())
     header.write_bytes(bytes[:])
   }
-  header.write_uint64_le(fields.data_size)
+  header.write_uint64_le(data_size)
   let head = header.to_bytes()
   let overhead = head.length().to_uint64() + 13UL
-  if fields.data_size > 18446744073709551615UL - overhead {
+  if data_size > 18446744073709551615UL - overhead {
     raise Invalid("Attachment record length overflow")
   }
-  let length = fields.data_size + overhead
-  let index = { ..fields, length, }
+  let length = data_size + overhead
+  let index : AttachmentIndex = {
+    offset: 0UL,
+    length,
+    log_time,
+    create_time,
+    data_size,
+    name,
+    media_type,
+  }
   let index_size = encode_attachment_index(index).length()
   if index_size > self.limits.max_record_bytes {
     raise Invalid("AttachmentIndex exceeds allocation budget")
   }
   self.check_summary(index_size + 9)
   self.attachment_open = true
-  defer {
-    self.attachment_open = false
-  }
   errdefer {
-    self.state = WriterFailed
+    if self.state == WriterOpen {
+      self.state = WriterFailed
+    }
+    self.attachment_open = false
   }
   self.flush_pending()
   self.check_summary(index_size + 9)
@@ -271,25 +312,97 @@ fn StreamWriter::write_attachment(
   prefix.write_byte(0x09)
   prefix.write_uint64_le(length - 9UL)
   self.send(prefix.to_bytes(), true)
+  self.require_attachment_open()
   self.send(head, true)
-  let mut left = fields.data_size
-  let mut crc = crc32(head)
-  supply(bytes => {
-    let size = bytes.length().to_uint64()
-    if size > left {
-      raise Invalid("Attachment source exceeds declared size")
-    }
-    self.send(bytes, true)
-    left -= size
-    crc = crc32_extend(crc, bytes)
-  })
-  if left != 0UL {
+  self.require_attachment_open()
+  {
+    writer: self,
+    index: { ..index, offset, },
+    left: data_size,
+    crc: crc32(head),
+    active: true,
+    busy: false,
+  }
+}
+
+///|
+fn StreamWriter::require_attachment_open(
+  self : StreamWriter,
+) -> Unit raise McapError {
+  if self.state != WriterOpen || !self.attachment_open {
+    raise Invalid("Attachment writer was cancelled during transfer")
+  }
+}
+
+///|
+fn AttachmentWrite::require_active(
+  self : AttachmentWrite,
+) -> Unit raise McapError {
+  if !self.active ||
+    self.busy ||
+    self.writer.state != WriterOpen ||
+    !self.writer.attachment_open {
+    raise Invalid("Attachment session is closed or already in use")
+  }
+}
+
+///|
+/// Invalid input during an active transfer makes its destination unusable.
+pub fn AttachmentWrite::write(
+  self : AttachmentWrite,
+  bytes : Bytes,
+) -> Unit raise McapError {
+  self.require_active()
+  self.busy = true
+  defer {
+    self.busy = false
+  }
+  errdefer self.cancel()
+  let size = bytes.length().to_uint64()
+  if size > self.left {
+    raise Invalid("Attachment source exceeds declared size")
+  }
+  self.writer.send(bytes, true)
+  self.writer.require_attachment_open()
+  self.left -= size
+  self.crc = crc32_extend(self.crc, bytes)
+}
+
+///|
+pub fn AttachmentWrite::finish(self : AttachmentWrite) -> Unit raise McapError {
+  self.require_active()
+  self.busy = true
+  defer {
+    self.busy = false
+  }
+  errdefer self.cancel()
+  if self.left != 0UL {
     raise Invalid("Attachment source ended before declared size")
   }
-  self.send(crc.mcap_le_bytes(), true)
-  self.records += 1
-  self.retain(0x0a, encode_attachment_index({ ..index, offset, }))
-  self.attachments += 1U
+  let writer = self.writer
+  writer.send(self.crc.mcap_le_bytes(), true)
+  writer.require_attachment_open()
+  writer.records += 1
+  writer.retain(0x0a, encode_attachment_index(self.index))
+  writer.attachments += 1U
+  writer.attachment_open = false
+  self.active = false
+}
+
+///|
+pub fn AttachmentWrite::cancel(self : AttachmentWrite) -> Unit {
+  if self.active {
+    self.active = false
+    if self.writer.state == WriterOpen {
+      self.writer.state = WriterFailed
+    }
+    self.writer.attachment_open = false
+  }
+}
+
+///|
+pub fn AttachmentWrite::remaining(self : AttachmentWrite) -> UInt64 {
+  self.left
 }
 
 ///|

@@ -123,6 +123,9 @@ fn run(
     println(
       "scan-query INPUT [--topic TOPIC --start NS --end NS --offset N --limit N --descending]\nvalidate-range INPUT [--output REPORT.json]\nattachment-list INPUT\nattachment-extract INPUT RECORD_OFFSET NEW.bin",
     )
+    println(
+      "attachment-catalog INPUT\nattachment-range INPUT RECORD_OFFSET START LENGTH\nattachment-export INPUT EXISTING_DIRECTORY",
+    )
     return
   }
   if options.command == "aggregate" {
@@ -264,7 +267,7 @@ fn run(
   }
   if options.command == "validate-range" {
     let mut data_crc_verified = false
-    let count = @core.scan_source(
+    let count = @core.scan_source_streaming(
       scope.open(options.inputs[0]),
       @core.source_visitor(),
       attachment_ref=fn(_) { () },

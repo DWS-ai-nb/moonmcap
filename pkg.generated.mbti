@@ -13,9 +13,13 @@ pub fn aggregate_json(DatasetCursor, Array[Channel], options? : AggregateOptions
 
 pub fn aggregate_options() -> AggregateOptions
 
+pub fn all_attachments() -> AttachmentQuery
+
 pub fn all_query() -> Query
 
 pub fn artifact_batch_storage(() -> Bytes? raise McapError, (Bytes) -> Unit raise McapError, (Int32) -> WriteSink raise McapError, (Int32) -> Unit raise McapError, (Int32) -> String raise McapError, (Int32) -> Unit raise McapError, (Int32) -> Bool raise McapError, (Int32) -> Unit raise McapError, () -> Array[Int32] raise McapError) -> ArtifactBatchStorage
+
+pub fn attachment_export_destination(WriteSink, () -> Unit raise McapError, () -> Unit raise McapError) -> AttachmentExportDestination
 
 pub fn block_recovery_json(BlockRecoveryReport) -> Json
 
@@ -68,6 +72,8 @@ pub fn crc32_extend(UInt32, Bytes) -> UInt32
 pub fn dataset_message_json(DatasetMessage, Array[Channel]) -> Json
 
 pub fn decode_attachment(Bytes, limits? : Limits) -> Attachment raise McapError
+
+pub fn decode_attachment_checkpoint(Bytes, limits? : Limits) -> AttachmentCheckpoint raise McapError
 
 pub fn decode_attachment_index(Bytes, limits? : Limits) -> AttachmentIndex raise McapError
 
@@ -203,6 +209,8 @@ pub fn messages_csv(Array[Message], Array[Channel]) -> String
 
 pub fn messages_json(Array[Message], Array[Channel]) -> Json
 
+pub fn new_attachment_export_journal(AttachmentExportPlan, (AttachmentIndex) -> String raise McapError, journal_bytes? : Int32) -> AttachmentExportJournal raise McapError
+
 pub fn new_builder(profile? : String, limits? : Limits) -> LogBuilder raise McapError
 
 pub fn new_read_source(UInt64, (UInt64, Int32) -> Bytes raise McapError) -> ReadSource
@@ -285,13 +293,17 @@ pub fn resumable_chunk_pipeline(Array[ReadSource], SortStorage, WriteSink, (Read
 
 pub fn resumable_merge(Array[ReadSource], SortStorage, WriteSink, (ReadSource) -> String raise McapError, (Bytes) -> Unit raise McapError, checkpoint? : Bytes, options? : ExternalOptions, cancelled? : () -> Bool) -> ExternalReport raise McapError
 
+pub fn resume_attachment_exports(AttachmentExportPlan, (AttachmentIndex) -> String raise McapError, Bytes, (AttachmentExportReceipt) -> Bool raise McapError, journal_bytes? : Int32) -> AttachmentExportJournal raise McapError
+
 pub fn ros1_decoder(String, Bytes, options? : CdrOptions) -> Ros1Decoder raise McapError
 
 pub fn run_artifact_batch(String, Int32, ArtifactBatchStorage, (Int32, WriteSink) -> Json raise McapError, stop_after? : Int32, cancelled? : () -> Bool) -> Json raise McapError
 
 pub fn scan_file(Bytes, limits? : Limits) -> Array[Record] raise McapError
 
-pub fn scan_source(ReadSource, SourceVisitor, limits? : Limits, declaration_bytes? : Int32, cancelled? : () -> Bool, trace? : (SourceScanEvent) -> Unit, attachment_ref? : (AttachmentRef) -> Unit raise McapError) -> UInt64 raise McapError
+pub fn scan_source(ReadSource, SourceVisitor, limits? : Limits, declaration_bytes? : Int32, cancelled? : () -> Bool, trace? : (SourceScanEvent) -> Unit) -> UInt64 raise McapError
+
+pub fn scan_source_streaming(ReadSource, SourceVisitor, limits? : Limits, declaration_bytes? : Int32, cancelled? : () -> Bool, trace? : (SourceScanEvent) -> Unit, attachment_ref? : (AttachmentRef) -> Unit raise McapError) -> UInt64 raise McapError
 
 pub fn shift_time(Log, UInt64, backwards? : Bool) -> Log raise McapError
 
@@ -430,6 +442,118 @@ pub fn Attachment::equal(Self, Self) -> Bool
 pub fn Attachment::not_equal(Self, Self) -> Bool
 pub fn Attachment::to_repr(Self) -> @debug.Repr
 
+pub struct AttachmentCatalog {
+  entries : Array[AttachmentRef]
+  evidence : AttachmentCatalogInfo
+}
+pub fn AttachmentCatalog::find(Self, UInt64) -> AttachmentRef?
+pub fn AttachmentCatalog::info(Self) -> AttachmentCatalogInfo
+pub fn AttachmentCatalog::select(Self, query? : AttachmentQuery, offset? : Int32, limit? : Int32, payload_bytes? : UInt64, cancelled? : () -> Bool) -> AttachmentSelection raise McapError
+
+pub struct AttachmentCatalogInfo {
+  used_index : Bool
+  coverage_checked : Bool
+  records : Int32
+  descriptor_bytes : Int32
+  payload_bytes : UInt64
+  range_reads : Int32
+  bytes_read : UInt64
+}
+
+pub(all) struct AttachmentCheckpoint {
+  source_size : UInt64
+  index : AttachmentIndex
+  header_crc : UInt32
+  expected_crc : UInt32
+  copied : UInt64
+  payload_crc : UInt32
+}
+pub fn AttachmentCheckpoint::encode(Self) -> Bytes raise McapError
+
+pub struct AttachmentCopy {
+  attachment : AttachmentRef
+  sink : WriteSink
+  expected_crc : UInt32
+  first_calls : Int32
+  first_bytes : UInt64
+  mut copied : UInt64
+  mut payload_crc : UInt32
+  mut phase : AttachmentCopyPhase
+  mut busy : Bool
+}
+pub fn AttachmentCopy::cancel(Self) -> Unit
+pub fn AttachmentCopy::checkpoint(Self) -> Bytes raise McapError
+pub fn AttachmentCopy::progress(Self) -> AttachmentCopyProgress
+pub fn AttachmentCopy::step(Self, max_bytes? : UInt64, max_windows? : Int32, cancelled? : () -> Bool) -> AttachmentCopyProgress raise McapError
+
+type AttachmentCopyPhase
+
+pub struct AttachmentCopyProgress {
+  copied : UInt64
+  total : UInt64
+  complete : Bool
+  crc_verified : Bool
+  range_reads : Int32
+  bytes_read : UInt64
+}
+
+pub struct AttachmentExportDestination {
+  sink : WriteSink
+  publish : () -> Unit raise McapError
+  abort : () -> Unit raise McapError
+}
+
+type AttachmentExportEntry
+
+pub struct AttachmentExportJournal {
+  plan : AttachmentExportPlan
+  signature : Bytes
+  receipts : Array[AttachmentExportReceipt]
+  budget : Int32
+  mut busy : Bool
+  mut needs_save : Bool
+}
+pub fn AttachmentExportJournal::info(Self) -> AttachmentExportJournalInfo
+pub fn AttachmentExportJournal::receipts(Self) -> Array[AttachmentExportReceipt]
+pub fn AttachmentExportJournal::run(Self, (String, AttachmentIndex) -> AttachmentExportDestination raise McapError, (Bytes) -> Unit raise McapError, max_files? : Int32, cancelled? : () -> Bool) -> AttachmentExportJournalInfo raise McapError
+pub fn AttachmentExportJournal::snapshot(Self) -> Bytes raise McapError
+
+pub struct AttachmentExportJournalInfo {
+  planned : Int32
+  published : Int32
+  payload_bytes : UInt64
+  needs_save : Bool
+  complete : Bool
+}
+
+pub struct AttachmentExportPlan {
+  entries : Array[AttachmentExportEntry]
+  payload_bytes : UInt64
+  mut busy : Bool
+}
+pub fn AttachmentExportPlan::export_files(Self, (String, AttachmentIndex) -> AttachmentExportDestination raise McapError, start_index? : Int32, max_files? : Int32, on_published? : (AttachmentExportReceipt) -> Unit raise McapError, cancelled? : () -> Bool) -> AttachmentExportReport raise McapError
+pub fn AttachmentExportPlan::info(Self) -> AttachmentExportPlanInfo
+pub fn AttachmentExportPlan::targets(Self) -> Array[(String, AttachmentIndex)]
+
+pub struct AttachmentExportPlanInfo {
+  records : Int32
+  payload_bytes : UInt64
+}
+
+pub struct AttachmentExportReceipt {
+  destination : String
+  source : AttachmentIndex
+  checksum_verified : Bool
+  range_reads : Int32
+  bytes_read : UInt64
+}
+
+pub struct AttachmentExportReport {
+  receipts : Array[AttachmentExportReceipt]
+  payload_bytes : UInt64
+  next_index : Int32?
+}
+
 pub(all) struct AttachmentIndex {
   offset : UInt64
   length : UInt64
@@ -438,6 +562,20 @@ pub(all) struct AttachmentIndex {
   data_size : UInt64
   name : String
   media_type : String
+}
+
+pub struct AttachmentPayloadCheck {
+  payload_bytes : UInt64
+  crc_verified : Bool
+  range_reads : Int32
+  bytes_read : UInt64
+}
+
+pub(all) struct AttachmentQuery {
+  names : Array[String]
+  media_types : Array[String]
+  start_time : UInt64
+  end_time : UInt64
 }
 
 pub struct AttachmentRef {
@@ -449,6 +587,41 @@ pub struct AttachmentRef {
 }
 pub fn AttachmentRef::copy_to(Self, WriteSink, cancelled? : () -> Bool) -> Bool raise McapError
 pub fn AttachmentRef::info(Self) -> AttachmentIndex
+pub fn AttachmentRef::read_range(Self, UInt64, Int32, max_bytes? : Int32, limits? : Limits, cancelled? : () -> Bool) -> Bytes raise McapError
+pub fn AttachmentRef::resume_copy(Self, ReadSource, (Bytes) -> Unit raise McapError, Bytes, limits? : Limits, cancelled? : () -> Bool) -> AttachmentCopy raise McapError
+pub fn AttachmentRef::start_copy(Self, WriteSink, limits? : Limits) -> AttachmentCopy raise McapError
+pub fn AttachmentRef::verify_payload(Self, limits? : Limits, cancelled? : () -> Bool) -> AttachmentPayloadCheck raise McapError
+
+pub struct AttachmentSelection {
+  entries : Array[AttachmentRef]
+  matching_records : Int32
+  selected_bytes : UInt64
+  next_offset : Int32?
+}
+pub fn AttachmentSelection::copy_into(Self, StreamWriter, cancelled? : () -> Bool) -> Unit raise McapError
+pub fn AttachmentSelection::items(Self) -> Array[AttachmentRef]
+pub fn AttachmentSelection::plan_exports(Self, (AttachmentIndex) -> String raise McapError, key_bytes? : Int32, cancelled? : () -> Bool) -> AttachmentExportPlan raise McapError
+pub fn AttachmentSelection::verify(Self, cancelled? : () -> Bool) -> AttachmentVerification raise McapError
+
+pub struct AttachmentVerification {
+  records : Int32
+  checksums_verified : Int32
+  checksums_absent : Int32
+  payload_bytes : UInt64
+}
+
+pub struct AttachmentWrite {
+  writer : StreamWriter
+  index : AttachmentIndex
+  mut left : UInt64
+  mut crc : UInt32
+  mut active : Bool
+  mut busy : Bool
+}
+pub fn AttachmentWrite::cancel(Self) -> Unit
+pub fn AttachmentWrite::finish(Self) -> Unit raise McapError
+pub fn AttachmentWrite::remaining(Self) -> UInt64
+pub fn AttachmentWrite::write(Self, Bytes) -> Unit raise McapError
 
 pub(all) struct BinaryField {
   path : String
@@ -1461,6 +1634,7 @@ pub struct RangeReader {
   mut cache_hits : Int32
   mut full_validation : Bool
 }
+pub fn RangeReader::attachment_catalog(Self, descriptor_bytes? : Int32, summary_bytes? : Int32, verify_coverage? : Bool, cancelled? : () -> Bool) -> AttachmentCatalog raise McapError
 pub fn RangeReader::channels(Self) -> Array[Channel]
 pub fn RangeReader::clear_cache(Self) -> Unit
 pub fn RangeReader::cursor(Self, Query, pending_bytes? : Int32, span_bytes? : Int32) -> FileCursor raise McapError
@@ -1824,6 +1998,7 @@ pub fn StreamWriter::add_channel(Self, Channel) -> Unit raise McapError
 pub fn StreamWriter::add_metadata(Self, Metadata) -> Unit raise McapError
 pub fn StreamWriter::add_schema(Self, Schema) -> Unit raise McapError
 pub fn StreamWriter::append(Self, Message) -> Unit raise McapError
+pub fn StreamWriter::begin_attachment(Self, String, String, UInt64, log_time? : UInt64, create_time? : UInt64) -> AttachmentWrite raise McapError
 pub fn StreamWriter::cancel(Self) -> Unit
 pub fn StreamWriter::copy_attachment(Self, AttachmentRef, cancelled? : () -> Bool) -> Unit raise McapError
 pub fn StreamWriter::finish(Self) -> WriteProgress raise McapError
