@@ -58,7 +58,7 @@
   "wasm_real_file_query_and_extraction": true,
   "wasm_extracted_sha256": "feafdd5e1aec05f3a3a67ec95aa74781bd6c8a92883d8003df686b4f0f0aecd6",
   "node_export_reference_hash": "feafdd5e1aec05f3a3a67ec95aa74781bd6c8a92883d8003df686b4f0f0aecd6",
-  "candidate_commit": "c5698ffa1d9c0ab16db8854990e8d1486e30ff6a",
+  "candidate_commit": "a7922a006e85971b6319438cad3533ed0bb78539",
   "candidate_tracked_changes": false,
   "workflow_sha256": "97d3f3cf1c061ed86899084af886c746d560b4a761eb98ea8489fb999400fa95"
 }

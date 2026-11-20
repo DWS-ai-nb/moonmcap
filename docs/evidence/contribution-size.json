@@ -1,10 +1,10 @@
 {
-  "implementation_added": 3193,
-  "implementation_deleted": 37,
+  "implementation_added": 3205,
+  "implementation_deleted": 40,
   "test_added": 2480,
   "test_deleted": 0,
-  "implementation_net_added": 3156,
+  "implementation_net_added": 3165,
   "base_commit": "e99a19f101092c982189d85d9536cf47eb5587c4",
-  "candidate_commit": "c5698ffa1d9c0ab16db8854990e8d1486e30ff6a",
+  "candidate_commit": "a7922a006e85971b6319438cad3533ed0bb78539",
   "count_rule": "Changed .mbt lines excluding blanks and // comments; tests counted separately. Generated .mbti, other languages, documents and unchanged upstream code excluded. Added and net-added counts are distinct; formatting can affect line counts."
 }
