@@ -2,6 +2,10 @@
 
 质量与使用入口：[入口选择](docs/entry-points.md)、[静态检查](docs/static-checks.md)、[风险覆盖](docs/risk-coverage.md)、[SO-101 完整示例](examples/so101/README.md)。
 
+当前 fork 的 [本期贡献说明](docs/contest-proposal.md) 和 [复审意见核对](docs/workbuddy-review.md) 记录大附件增量、上游基线及验证结果。
+
+本分支新增附件接口目前随源码交付，尚未发布到 mooncakes。下方 `moon add LilaLola67/moonmcap@0.17.5` 安装上游已发布版本；验证本期功能请使用当前本地工程或累计补丁，并阅读 [大附件使用说明](docs/attachment-stream.md)。
+
 MoonBit 的 **MCAP 0 消息日志库**，用于读取和校验机器人、传感器与仿真日志，按主题和时间查询，并裁剪、合并或恢复可读数据。当前版本 **0.17.5**。
 
 从 [首次使用](docs/quickstart.md) 开始，选择入口前阅读 [支持范围](docs/scope.md)。完整索引见 [文档导航](docs/README.md)，异常处理见 [排错说明](docs/troubleshooting.md)。
