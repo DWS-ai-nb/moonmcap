@@ -47,9 +47,26 @@ complete 为 false；成功生成片段时进程仍退出 0。新文件有 **48 
 附件和元数据均为 0；原来截断点后的数据不会被补造。
 不要仅以标准错误有内容判断失败，应检查退出码和报告。
 
+## 本期大附件操作
+
+从 [本期贡献仓库](https://github.com/DWS-ai-nb/moonmcap/tree/contrib/streamed-attachments) 构建后，继续在仓库根目录运行。示例附件的记录偏移为 `6926`，其他输入用 `attachment-list` 查找。请使用新的导出目录和提取文件名。
+
+```sh verify:attachments
+node _build/js/debug/build/cmd/mcap/mcap.js scan-query examples/files/zstd-summary.mcap --topic /imu --start 20000000000 --end 30000000000
+node _build/js/debug/build/cmd/mcap/mcap.js attachment-list examples/files/zstd-summary.mcap
+node _build/js/debug/build/cmd/mcap/mcap.js attachment-catalog examples/files/zstd-summary.mcap
+node _build/js/debug/build/cmd/mcap/mcap.js attachment-range examples/files/zstd-summary.mcap 6926 0 8
+node _build/js/debug/build/cmd/mcap/mcap.js attachment-extract examples/files/zstd-summary.mcap 6926 quickstart-calibration.json
+mkdir quickstart-attachments
+node _build/js/debug/build/cmd/mcap/mcap.js attachment-export examples/files/zstd-summary.mcap quickstart-attachments
+node _build/js/debug/build/cmd/mcap/mcap.js validate-range examples/files/zstd-summary.mcap
+```
+
+选择性查询返回相同的 5 个时间点，`full_validation` 为 `false`。列表和目录得到 1 个附件。切片的 `data_hex` 为 `7b22756e6974223a`，切片报告的 `full_payload_crc_verified` 为 `false`。提取和批量导出得到相同的 15 字节，均通过附件 CRC。最后一步校验整个录制，确认 100 条消息且 `data_crc_verified` 为 `true`。参数、预算和独占发布的约定见 [大附件命令](cli.md#大附件命令)。
+
 完整输入与预期输出的 SHA-256、来源及独立 MCAP reader 核对见
 [文件样例](../examples/README.md)。实际大型输入应先看 [使用边界](scope.md)，
 再选择流式片段、外部排序或大文件诊断。
 
 遇到环境、路径、预算或格式错误，见 [排错说明](troubleshooting.md)。
-复制源码副本并重放本文命令及 README API 示例：`python tools/quickstart_smoke.py`。
+执行 `python tools/quickstart_smoke.py` 可在干净源码副本重放上述命令并编译运行两个 API 示例。

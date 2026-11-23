@@ -15,7 +15,7 @@ version = "0.17.5"
 
 readme = "README.md"
 
-repository = "https://github.com/LilaLola67/moonmcap"
+repository = "https://github.com/DWS-ai-nb/moonmcap"
 
 license = "MIT"
 

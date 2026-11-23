@@ -19,6 +19,7 @@ flowchart LR
 | --- | --- | --- |
 | 记录解析与校验 | [source_scan.mbt](../source_scan.mbt)、[reader.mbt](../reader.mbt) | 按记录限制输入和解压；已观察消息不代表后续 CRC 已通过 |
 | 选择性查询 | [range_reader.mbt](../range_reader.mbt)、[sidecar.mbt](../sidecar.mbt) | 缓存、候选块与游标状态；索引绑定源内容，快速查询不能替代全文件校验 |
+| 大附件传输与恢复 | [attachment_stream.mbt](../attachment_stream.mbt)、[attachment_catalog.mbt](../attachment_catalog.mbt)、[attachment_checkpoint.mbt](../attachment_checkpoint.mbt) | 复用 `ReadSource` 和 `WriteSink`。UInt64 记录跨度分离描述与载荷，按窗口传输，保持原 CRC、索引和统计语义。应用负责源稳定性及暂存输出。 |
 | 流式编码 | [stream_writer.mbt](../stream_writer.mbt) | 声明、当前 Chunk、统计；finish 成功只说明 sink 接受完整容器，不等于文件已持久发布 |
 | Node 文件宿主 | [files.mbt](../nodeio/files.mbt)、[storage.mbt](../nodeio/storage.mbt) | 文件描述符、短写重试、同步、独占发布与临时文件清理 |
 | 录制与批次 | [recording_session.mbt](../recording_session.mbt)、[artifact_batch.mbt](../artifact_batch.mbt) | 清单校验、已提交产物复用、未提交部分恢复；没有多系统事务或断电保证 |

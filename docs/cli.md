@@ -57,7 +57,23 @@ NDJSON 写到 stdout 时错误前已发出的行无法回滚；文件 `--output`
 `transform` 命令支持主题映射、时间窗采样、时间对齐、附件及元数据筛选，参数与处理顺序见 [批量变换](batch-transform.md)。
 
 `validate INPUT [--output report.json]` 提供结构化完整诊断；`reindex INPUT --output NEW.mcap` 在数据区完整有效时重建索引和摘要，支持压缩及分块参数。详见 [诊断与修复](diagnostics.md)。两者均受 --max-file-bytes 完整读取预算限制。
-# 独立块部分恢复
+## 大附件命令
+
+下面是本期贡献分支的命令行入口。先运行 `moon build --target js cmd/mcap`，再用 `node _build/js/debug/build/cmd/mcap/mcap.js` 加上下表中的命令及参数。时钟参数沿用 UInt64 十进制纳秒，`RECORD_OFFSET` 是文件中的十进制记录偏移，`START` 和 `LENGTH` 是附件载荷内的字节数。
+
+| 命令 | 行为与输出 |
+| --- | --- |
+| `scan-query INPUT [--topic TOPIC] [--start NS] [--end NS] [--descending] [--offset N] [--limit N] [--output REPORT.json]` | 沿数据区查找消息并跳过附件载荷，支持无索引录制。输出消息和读取诊断，保留闭区间与等时物理顺序。分块解压、声明及结果仍有预算，`full_validation` 为 `false`。 |
+| `attachment-list INPUT` | 按物理顺序列出附件描述和读取诊断，保留同名记录。JSON 列表有 8 MiB 预算，超出会报错。 |
+| `attachment-catalog INPUT` | 核对物理记录覆盖，返回 `total`、`payload_bytes` 和最多前 1,000 项描述。`used_index` 提示使用了摘要索引，`coverage_checked` 提示已核对边界。 |
+| `attachment-range INPUT RECORD_OFFSET START LENGTH` | 读取不超过 64 KiB 的附件内切片，结果为 `data_hex`。`full_payload_crc_verified` 为 `false`，全载荷校验可使用提取或完整范围校验。 |
+| `attachment-extract INPUT RECORD_OFFSET NEW.bin` | 分段写入同目录暂存文件，核对可用附件 CRC 后独占发布，返回附件及 `attachment_crc_verified`。 |
+| `attachment-export INPUT EXISTING_DIRECTORY` | 按记录偏移生成 `attachment-偏移.bin`，返回每个文件的收据。超过 1,000 个附件时在创建输出前拒绝，可用列表和单个提取，或用库 API 分页。 |
+| `validate-range INPUT [--output REPORT.json]` | 按记录完整校验，包括大附件的可用 CRC 和数据区 CRC。成功报告含 `valid`、`messages`、`data_crc_verified`，校验错误退出 2。 |
+
+命令成功退出 0，参数、预算、CRC 或发布失败退出 2。提取和批量导出要求新目标，CRC 缺失会明确报告未校验。批量导出逐文件发布，中途失败时之前已发布的文件可保留。目录与切片读取不能代替整文件校验。可复制的输入、参数及预期结果见 [首次使用](quickstart.md#本期大附件操作)，无索引大附件的对照见 [同输入复核](attachment-stream.md#同输入复核)。
+
+## 独立块部分恢复
 
 `recover-blocks INPUT --output NEW.mcap` 输出恢复清单到标准输出。完整边界及重定向示例见 [独立块恢复](block-recovery.md)。该模式不改变 `recover` 的连续前缀语义。
 

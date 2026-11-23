@@ -1,6 +1,6 @@
 # 核心入口合同与错误处理
 
-完整签名见 [生成接口](../pkg.generated.mbti) 和 [在线 API](https://mooncakes.io/docs/LilaLola67/moonmcap)。
+当前源码的完整签名见 [生成接口](../pkg.generated.mbti)，已发行的上游签名见 [Mooncakes API](https://mooncakes.io/docs/LilaLola67/moonmcap)。
 可复制的最小 API 示例由 [首次使用](quickstart.md) 链接，且在独立源码导出树中编译执行。
 以下约定补充签名不能表达的前置条件、验证强度和资源责任。
 
@@ -13,6 +13,20 @@
 | `nodeio.output_transaction` | 新目标、父目录已存在、同目录硬链接可用；publish 创建完整目标 | 提交前失败不发布；提交后清理错明确标记 output published；abort 不删除已发布目标 | [实际宿主故障](../tools/fs_fault_workflows.py) |
 | `open_recording_session` | 独占拥有目录、选项与清单一致；只把清单承认的段视为 committed | append 已接受不等于已持久提交；恢复按 committed_messages 重发未提交消息 | [杀进程恢复](../tools/recording_session_workflows.py) |
 | `run_artifact_batch` | plan、数量、已完成产物身份一致；回调按给定 sink 生成一项 | 检查点错、状态非法或产物改变即拒绝；重复恢复不重复生成完整项 | [批次恢复](../tools/clip_batch_workflows.py)、[风险单元测试](../risk_paths_test.mbt) |
+
+## 附件流式 API
+
+| 入口 | 使用约定 |
+| --- | --- |
+| `RangeReader::query_scan` | 选择性扫描顶层记录，跳过附件载荷与不匹配的平铺消息负载。匹配消息有结果预算，块解压遵守既有预算。 |
+| `RangeReader::visit_attachments`、`RangeReader::attachment_catalog` | 回调返回 `false` 可停止遍历。目录可按名称、媒体类型、时间和载荷预算筛选，以物理偏移区分同名附件。需要确认摘要覆盖时设置 `verify_coverage=true`。 |
+| `scan_source_streaming` | 提供 `attachment_ref` 以引用接收附件描述。函数仍校验完整数据区及可用 CRC，消费方应在扫描成功后发布结果。 |
+| `AttachmentRef::info`、`read_range`、`copy_to`、`verify_payload` | 引用在源可读且稳定期间有效。`info` 只返回描述，切片检查范围与当前描述，复制和整段校验会比较可用的附件 CRC。 |
+| `AttachmentRef::start_copy`、`resume_copy` | 分段提取通过检查点记录进度。恢复要求同一源和一致的输出前缀，会比对前缀字节并校验附件描述和 CRC 字段。调用方管理暂存输出。 |
+| `StreamWriter::begin_attachment`、`add_attachment_from`、`copy_attachment` | 增量写入必须提供确切长度。`begin_attachment` 会话独占写入器，`write` 和 `finish` 成功才完成记录。取消与错误会终止后续写入，部分输出由调用方清理。 |
+| `AttachmentExportJournal`、`resume_attachment_exports` | 每次发布前保存意图，发布后保存收据。恢复需要适配器核对源身份、目标内容和归属，无法确定待发布状态时拒绝继续。 |
+
+同步与异步兼容检查点格式，分段传输的 64 KiB 窗口约束附件载荷。Node 提供文件发布事务，自定义 sink、快照及网络源由调用方管理。见 [源码依赖示例](attachment-stream.md#在其他-moonbit-项目中引用本期源码) 和 [异步、目录及恢复](attachment-stream.md#索引异步和恢复)。
 
 ## 错误类别与安全重试
 

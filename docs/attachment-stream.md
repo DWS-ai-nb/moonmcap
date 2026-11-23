@@ -79,3 +79,60 @@ node tools/attachment_wasm.mjs capture.mcap extract RECORD_OFFSET new.bin
 ```
 
 Wasm 文件入口在 Node 中加载真实编译产物，范围读取、输出提交及文件稳定性检查由宿主提供。复核脚本实际提取约 64 MiB 附件，并与参考 SHA-256 比较。支持范围和统计也写入 [本期申报说明](contest-proposal.md)。
+
+## 在其他 MoonBit 项目中引用本期源码
+
+把按 README 克隆的 `moonmcap` 与你的 `consumer` 项目放在同一父目录。父目录的 `moon.work` 指定两个成员，这样模块名继续沿用上游，依赖解析会使用本期源码。
+
+```text
+members = ["moonmcap", "consumer"]
+```
+
+`consumer/moon.mod`：
+
+```text
+name = "example/attachment-consumer"
+version = "0.0.1"
+
+import {
+  "LilaLola67/moonmcap@0.17.5",
+}
+```
+
+`consumer/moon.pkg`：
+
+```text
+import {
+  "LilaLola67/moonmcap" @mcap,
+  "moonbitlang/core/buffer",
+}
+pkgtype(kind:"executable")
+```
+
+将以下内容保存为 `consumer/main.mbt`。在 `consumer` 中执行 `moon run . --target wasm` 或 `moon run . --target js`，预期均打印 `MCAP_ATTACHMENT_OK`。
+
+```moonbit verify:attachment-consumer
+///|
+fn main {
+  try {
+    let output = @buffer.Buffer::Buffer()
+    let sink = @mcap.new_write_sink(bytes => output.write_bytes(bytes[:]))
+    let writer = @mcap.new_stream_writer(sink)
+    let writing = writer.begin_attachment("calibration.bin", "application/octet-stream", 7UL)
+    writing.write(b"exam")
+    writing.write(b"ple")
+    writing.finish()
+    ignore(writer.finish())
+
+    let reader = @mcap.open_reader(@mcap.memory_source(output.to_bytes()))
+    let items = reader.attachment_catalog(verify_coverage=true).select().items()
+    assert_eq(items.length(), 1)
+    assert_eq(items[0].read_range(1UL, 3), b"xam")
+    assert_true(items[0].verify_payload().crc_verified)
+    println("MCAP_ATTACHMENT_OK")
+  } catch {
+    @mcap.Invalid(reason) => abort(reason)
+    error => abort("\{error}")
+  }
+}
+```

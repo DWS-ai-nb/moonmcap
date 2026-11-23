@@ -1,20 +1,33 @@
 # MoonMCAP
 
-质量与使用入口：[入口选择](docs/entry-points.md)、[静态检查](docs/static-checks.md)、[风险覆盖](docs/risk-coverage.md)、[SO-101 完整示例](examples/so101/README.md)。
+[![源码 CI](https://github.com/DWS-ai-nb/moonmcap/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DWS-ai-nb/moonmcap/actions/workflows/ci.yml?query=branch%3Amain)
 
-当前 fork 的 [本期贡献说明](docs/contest-proposal.md) 和 [复审意见核对](docs/workbuddy-review.md) 记录大附件增量、上游基线及验证结果。
-
-本分支新增附件接口目前随源码交付，尚未发布到 mooncakes。下方 `moon add LilaLola67/moonmcap@0.17.5` 安装上游已发布版本；验证本期功能请使用当前本地工程或累计补丁，并阅读 [大附件使用说明](docs/attachment-stream.md)。
-
-MoonBit 的 **MCAP 0 消息日志库**，用于读取和校验机器人、传感器与仿真日志，按主题和时间查询，并裁剪、合并或恢复可读数据。当前版本 **0.17.5**。
+MoonBit 的 **MCAP 0 消息日志库**，用于读取和校验机器人、传感器与仿真日志，按主题和时间查询，并裁剪、合并或恢复可读数据。`DWS-ai-nb/moonmcap` 基于 MIT 许可的上游 0.17.5，本期新增大附件分段传输和无索引检索。交付范围与验证结果见 [本期贡献说明](docs/contest-proposal.md) 和 [十一月验收入口](docs/acceptance-november.md)。
 
 从 [首次使用](docs/quickstart.md) 开始，选择入口前阅读 [支持范围](docs/scope.md)。完整索引见 [文档导航](docs/README.md)，异常处理见 [排错说明](docs/troubleshooting.md)。
 
-## 安装
+## 从源码运行本期功能
 
-项目固定编译基准为 **moonc 0.10.17+d971670cd**，满足不低于 0.10.16 的要求。本地文件和网络宿主需要 **JS/Node.js 22.3+**。
+准备 Git、**moonc 0.10.17+d971670cd**（项目固定编译基准）及 **Node.js 22.3+**。以下命令使用仓库自带的合成录制：
 
-上游的 Windows 兼容性记录使用 `moonc v0.10.20+65efd5b93`、`moon 0.1.20261104 (940aa18)` 和 `moonrun 0.1.20261104 (940aa18)`。本分支的固定版本 CI 使用 `0.10.17+d971670cd` 与 `async@0.20.2`，验证 JS/Wasm 及文件宿主；当前官方工具链 CI 显式选择 `async@0.22.10`。使用当前官方安装器时先执行 `moon add --upgrade moonbitlang/async@0.22.10`、`moon update`，再运行检查与测试。[GitHub CI](.github/workflows/ci.yml) 保留两个组合的严格检查并记录 `moon version --all`，实际执行结果见 Actions。
+```sh
+git clone --branch contrib/streamed-attachments https://github.com/DWS-ai-nb/moonmcap.git
+cd moonmcap
+moon update
+moon build --target js cmd/mcap
+node _build/js/debug/build/cmd/mcap/mcap.js scan-query examples/files/zstd-summary.mcap --topic /imu --start 20000000000 --end 30000000000
+node _build/js/debug/build/cmd/mcap/mcap.js attachment-list examples/files/zstd-summary.mcap
+node _build/js/debug/build/cmd/mcap/mcap.js attachment-extract examples/files/zstd-summary.mcap 6926 calibration.json
+node _build/js/debug/build/cmd/mcap/mcap.js validate-range examples/files/zstd-summary.mcap
+```
+
+依次得到 **5 条消息**、附件 `calibration.json` 的描述、**15 字节**的提取文件，以及 **100 条消息**的完整范围校验报告。`6926` 是此示例中的附件记录偏移，处理其他文件时从 `attachment-list` 取得。输出路径须为新路径。更多可直接复现的命令见 [大附件操作示例](docs/quickstart.md#本期大附件操作)。
+
+固定工具链使用 `async@0.20.2`。若使用 CI 验证的当前工具链与 `async@0.22.10` 组合，在 `moon update` 前先执行 `moon add --upgrade moonbitlang/async@0.22.10`。两个组合的实际版本和结果见 [源码 CI](https://github.com/DWS-ai-nb/moonmcap/actions/workflows/ci.yml)。
+
+## 安装上游库
+
+Mooncakes 的 `LilaLola67/moonmcap@0.17.5` 是上游发行包。本期附件接口随 [贡献仓库源码](https://github.com/DWS-ai-nb/moonmcap/tree/contrib/streamed-attachments) 交付，开发者可用 [MoonBit 工作区](docs/attachment-stream.md#在其他-moonbit-项目中引用本期源码) 将当前源码作为依赖。
 
 在已有 MoonBit 项目中执行下面的安装命令；从空目录开始时，先创建 `moon.mod`：
 
@@ -60,18 +73,6 @@ fn main {
 预期输出 `MCAP_SAMPLE_OK`。库中的时间是 **UInt64 纳秒**，查询区间包含两端。
 JSON 时间使用字符串保留精度；不根据设备字段名推断单位或时钟关系。
 
-## 文件处理
-
-```sh
-git clone https://github.com/LilaLola67/moonmcap.git
-cd moonmcap
-moon update
-moon build --target js
-node _build/js/debug/build/cmd/mcap/mcap.js query examples/files/zstd-summary.mcap --topic /imu --start 20000000000 --end 30000000000 --full
-```
-
-应查询到 **5 条消息**，时间为 21、23、25、27、29 秒。完整的裁剪、校验和截断恢复命令及预期结果见 [首次使用](docs/quickstart.md)。示例文件随仓库提供，不需要实体设备。
-
 ## 能力与边界
 
 - **核心库（Wasm/JS）**：MCAP 0 标准记录、CRC、索引、无压缩/LZ4/Zstd、查询、变换与恢复。压缩字典、拼接帧和未声明的格式扩展不在支持范围，详见 [格式兼容表](docs/compatibility.md)。
@@ -85,6 +86,7 @@ node _build/js/debug/build/cmd/mcap/mcap.js query examples/files/zstd-summary.mc
 | 目标 | 入口 |
 | --- | --- |
 | 查询、裁剪、合并和修复 | [CLI](docs/cli.md)、[可运行样例](examples/README.md)、[诊断](docs/source-diagnostics.md) |
+| 大附件查询、切片、验证和导出 | [附件命令](docs/cli.md#大附件命令)、[附件-api](docs/api-contracts.md#附件流式-api)、[演示及实测](docs/attachment-stream.md) |
 | 选择性 IO、大文件和恢复任务 | [RangeReader](docs/range-reader.md)、[索引](docs/disk-sidecar.md)、[流式片段](docs/stream-context.md)、[外部合并](docs/external-merge.md) |
 | 解释或修改消息 | [解码](docs/payload-decoding.md)、[回写](docs/payload-rewrite.md)、[结构演进](docs/schema-evolution.md) |
 | 时间、质量和实验处理 | [同步](docs/synchronization.md)、[TF](docs/tf.md)、[质量](docs/incident-workflows.md)、[回归](docs/regression.md) |
@@ -101,7 +103,7 @@ python tools/check_docs.py
 python tools/quickstart_smoke.py
 ```
 
-[测试方法](docs/testing.md) 区分单元测试、独立参考实现、真实进程中断、干净源码副本、发行包安装和公开数据验证；[GitHub CI](https://github.com/LilaLola67/moonmcap/actions/workflows/ci.yml) 保存可复核的报告。公开录制、转换数据和合成样例分别标注，见 [公开语料](docs/corpus-validation.md)；历史百万消息和大文件实测的环境与限制见 [性能报告](docs/performance.md)。设备 SDK 桥接尚未进行实体设备联调。
+[测试方法](docs/testing.md) 区分单元测试、独立参考实现、真实进程中断、干净源码副本、发行包安装和公开数据验证。[本期 CI](https://github.com/DWS-ai-nb/moonmcap/actions/workflows/ci.yml) 保存各平台报告。`large-source` 与 `public-corpus` 需要手动选择，常规运行会跳过。历史规模实测见 [性能报告](docs/performance.md)，公开录制来源见 [公开语料](docs/corpus-validation.md)。设备 SDK 桥接尚未进行实体设备联调。
 
 0.17.3 追加句柄复用与同步失败回归，见 [修复证据](examples/validation/descriptor-reuse-0.17.3.json)。
 
@@ -109,7 +111,7 @@ python tools/quickstart_smoke.py
 
 历史验证记录保留在 [验证报告](examples/validation/release-0.16.10.json) 等文件中，版本变化见 [更新记录](CHANGELOG.md) 与 [迁移说明](docs/migration.md)。
 
-从 Mooncakes 全新安装的验证命令为 `python tools/install_smoke.py --version 0.17.5`，不使用仓库源路径覆盖。
+上游包的独立安装验证命令是 `python tools/install_smoke.py --version 0.17.5`。本期源码以干净源码树和 [大附件同输入实测](docs/attachment-stream.md#同输入复核) 验证。
 
 ## 开源许可
 

@@ -100,6 +100,25 @@ def verify_merge(path, payload_hash):
         assert next(reader.iter_metadata()).metadata["source"] == "same input comparison"
 
 
+def verify_export_limit(candidate, work):
+    path = work / "many-attachments.mcap"
+    with path.open("wb") as output:
+        writer = Writer(output, compression=CompressionType.NONE,
+                        index_types=IndexType.NONE, use_chunking=False,
+                        enable_data_crcs=True)
+        writer.start(library="Synthetic attachment export limit fixture")
+        for i in range(1001):
+            writer.add_attachment(i, i, f"{i}.bin", "application/octet-stream", b"x")
+        writer.finish()
+    assert cli(candidate, "attachment-catalog", path)["total"] == 1001
+    directory = work / "export-limit"
+    directory.mkdir()
+    rejection = cli(candidate, "attachment-export", path, directory,
+                    failure="at most 1000 attachments")
+    assert not any(directory.iterdir()), "over-limit export created output"
+    return {"input_attachments": 1001, "published_files": 0, **rejection}
+
+
 def exercise(baseline, candidate, work):
     large = work / "large.mcap"
     small = work / "small.mcap"
@@ -206,6 +225,7 @@ def exercise(baseline, candidate, work):
         "wasm_real_file_query_and_extraction": True,
         "wasm_extracted_sha256": hashes(wasm_output),
         "node_export_reference_hash": payload_hash,
+        "batch_export_limit": verify_export_limit(candidate, work),
     }
 
 

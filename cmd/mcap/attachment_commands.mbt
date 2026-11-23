@@ -82,9 +82,14 @@ fn run_attachment_command(
     }
     ["attachment-export", path, directory] => {
       let reader = @core.open_reader(scope.open(path), cache_bytes=0)
-      let selection = reader
-        .attachment_catalog(verify_coverage=true)
-        .select(limit=1000)
+      let catalog = reader.attachment_catalog(verify_coverage=true)
+      let max_files = 1000
+      if catalog.info().records > max_files {
+        raise @core.io_error(
+          "attachment-export supports at most 1000 attachments; use attachment-list and attachment-extract for individual files",
+        )
+      }
+      let selection = catalog.select(limit=max_files)
       let report = @nodeio.export_attachments(selection, directory)
       let receipts = report.receipts.map(receipt => {
         Json::object({

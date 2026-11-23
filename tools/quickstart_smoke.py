@@ -13,6 +13,41 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def attachment_demo(doc, exported, run):
+    block, = re.findall(r'```sh verify:attachments\n(.*?)\n```', doc, re.S)
+    reports = {}
+    for line in block.splitlines():
+        args = shlex.split(line)
+        if args == ['mkdir', 'quickstart-attachments']:
+            (exported / args[1]).mkdir()
+            continue
+        assert args[0] == 'node' and args[2] not in reports, args
+        reports[args[2]] = json.loads(run(args).stdout)
+
+    query = reports['scan-query']
+    assert [m['log_time'] for m in query['messages']] == [str(t * 10**9) for t in (21, 23, 25, 27, 29)]
+    assert query['diagnostics']['full_validation'] is False
+    attachment, = reports['attachment-list']['attachments']
+    assert (attachment['offset'], attachment['name'], attachment['data_size']) == ('6926', 'calibration.json', '15')
+    catalog = reports['attachment-catalog']
+    assert catalog['total'] == 1 and catalog['coverage_checked']
+    assert catalog['attachments'] == [attachment]
+    assert reports['attachment-range'] == {
+        'data_hex': '7b22756e6974223a', 'full_payload_crc_verified': False,
+    }
+    extracted = reports['attachment-extract']
+    assert extracted['attachment'] == attachment and extracted['attachment_crc_verified']
+    contents = (exported / 'quickstart-calibration.json').read_bytes()
+    assert len(contents) == 15 and contents[:8].hex() == reports['attachment-range']['data_hex']
+    receipt, = reports['attachment-export']['receipts']
+    assert receipt['attachment'] == attachment and receipt['crc_verified']
+    target = exported / 'quickstart-attachments/attachment-6926.bin'
+    assert Path(receipt['destination']).resolve() == target.resolve()
+    assert target.read_bytes() == contents
+    assert reports['validate-range'] == {'valid': True, 'messages': '100', 'data_crc_verified': True}
+    return len(reports)
+
+
 def main():
     work = ROOT / '_interop/quickstart' / uuid.uuid4().hex
     work.mkdir(parents=True)
@@ -56,6 +91,7 @@ def main():
     preserved = hashlib.sha256((exported / 'quickstart-slice.mcap').read_bytes()).hexdigest()
     run(commands[4], code=2)
     assert hashlib.sha256((exported / 'quickstart-slice.mcap').read_bytes()).hexdigest() == preserved
+    attachment_commands = attachment_demo(doc, exported, run)
     readme = (exported / 'README.md').read_text(encoding='utf-8')
     example = re.findall(r'```moonbit\n(.*?)\n```', readme, re.S)[0]
     consumer = work / 'consumer'
@@ -68,11 +104,23 @@ def main():
     for command in (['moon', 'run', '.', '--target', 'wasm'], ['moon', 'run', '.', '--target', 'js']):
         p = run(command, cwd=consumer)
         assert 'MCAP_SAMPLE_OK' in p.stdout
-    report = {'result': 'passed', 'documented_commands': len(commands), 'fixture_sha256_checked': True,
+    attachment_doc = (exported / 'docs/attachment-stream.md').read_text(encoding='utf-8')
+    attachment_example, = re.findall(r'```moonbit verify:attachment-consumer\n(.*?)\n```', attachment_doc, re.S)
+    (consumer / 'moon.pkg').write_text(
+        'import { "LilaLola67/moonmcap" @mcap, "moonbitlang/core/buffer", }\npkgtype(kind:"executable")\n',
+        encoding='utf-8',
+    )
+    (consumer / 'main.mbt').write_text(attachment_example, encoding='utf-8')
+    for target in ('wasm', 'js'):
+        p = run(['moon', 'run', '.', '--target', target], cwd=consumer)
+        assert 'MCAP_ATTACHMENT_OK' in p.stdout
+    report = {'result': 'passed', 'documented_commands': len(commands), 'attachment_commands': attachment_commands,
+              'fixture_sha256_checked': True,
               'workspace_build_artifacts_used': False, 'readme_api_example': 'Wasm and JS compiled and executed against exported source dependency',
+              'attachment_consumer_example': 'Wasm and JS compiled and executed against exported source dependency',
               'source_tree': tree, 'fresh_published_install': False, 'checks': ['five exact timestamps', 'slice auxiliary records', 'recovery boundary', 'existing output preserved']}
     (ROOT / '_interop/quickstart/report.json').write_text(json.dumps(report, indent=2) + '\n')
-    print('Clean quickstart passed: exact documented commands, README API and immutable fixtures')
+    print(f'Clean quickstart passed: {len(commands)} existing and {attachment_commands} attachment commands, two JS/Wasm API examples, immutable fixtures')
 
 
 if __name__ == '__main__':
