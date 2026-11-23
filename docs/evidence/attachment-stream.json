@@ -1,7 +1,7 @@
 {
   "baseline_commit": "e99a19f101092c982189d85d9536cf47eb5587c4",
   "input": "synthetic unchunked MCAP without indexes",
-  "python_mcap": "1.6.0",
+  "python_mcap": "1.3.0",
   "input_bytes": 67174797,
   "input_sha256": "35614bb72f4d94532f3c1151831308ab137c94d374fa4ad216439ef11bdd3cfa",
   "attachment_bytes": 67174400,
@@ -58,7 +58,13 @@
   "wasm_real_file_query_and_extraction": true,
   "wasm_extracted_sha256": "feafdd5e1aec05f3a3a67ec95aa74781bd6c8a92883d8003df686b4f0f0aecd6",
   "node_export_reference_hash": "feafdd5e1aec05f3a3a67ec95aa74781bd6c8a92883d8003df686b4f0f0aecd6",
-  "candidate_commit": "b8b34f45ce8173c5f231fd871ad514d2332c2806",
+  "batch_export_limit": {
+    "input_attachments": 1001,
+    "published_files": 0,
+    "exit": 2,
+    "error": "I/O: attachment-export supports at most 1000 attachments; use attachment-list and attachment-extract for individual files"
+  },
+  "candidate_commit": "f833a7b07491019e303ae62f32a0ccec265b5360",
   "candidate_tracked_changes": false,
-  "workflow_sha256": "97d3f3cf1c061ed86899084af886c746d560b4a761eb98ea8489fb999400fa95"
+  "workflow_sha256": "92e186c73a3b4f5b2f6d209bd655f5918fba6e212d18442f0d780cbe5a1b59ae"
 }

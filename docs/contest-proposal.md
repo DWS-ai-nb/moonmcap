@@ -4,7 +4,7 @@
 
 申报人 顿文爽 · GitHub ID DWS-ai-nb
 
-[申报仓库](https://github.com/DWS-ai-nb/moonmcap) · [贡献分支](https://github.com/DWS-ai-nb/moonmcap/tree/contrib/streamed-attachments) · [本期代码对照](https://github.com/DWS-ai-nb/moonmcap/compare/e99a19f101092c982189d85d9536cf47eb5587c4...b8b34f45ce8173c5f231fd871ad514d2332c2806)
+[申报仓库](https://github.com/DWS-ai-nb/moonmcap) · [贡献分支](https://github.com/DWS-ai-nb/moonmcap/tree/contrib/streamed-attachments) · [提交历史](https://github.com/DWS-ai-nb/moonmcap/commits/contrib/streamed-attachments) · [本期代码对照](https://github.com/DWS-ai-nb/moonmcap/compare/e99a19f101092c982189d85d9536cf47eb5587c4...f833a7b07491019e303ae62f32a0ccec265b5360) · [验收入口](acceptance-november.md)
 
 ## 项目基础与增量价值
 
@@ -24,4 +24,4 @@ Foxglove Python Writer 生成 67,174,797 字节的无索引录制，含 67,174,4
 
 ## 边界、来源与工作量
 
-运行时核对可用 CRC，缺失时报告未校验；SHA-256 属于复验脚本的独立比较。选择性读取与全文件校验分别提供结果。270 字节为逻辑读取量，64 KiB 为载荷窗口，宿主预读、摘要及分块解压另有成本。输入为合成录制，文件与异步宿主运行于 Node，核心覆盖 JS/Wasm。本期有效 MoonBit 实现新增 3,210 行、删除 40 行、净增 3,170 行，排除上游既有代码、测试、注释、空行、生成文件和其他语言。AI 辅助开发与材料整理，申报人负责理解实现并复现实测。[固定上游与许可](https://github.com/LilaLola67/moonmcap/tree/e99a19f101092c982189d85d9536cf47eb5587c4) · [实现提交](https://github.com/DWS-ai-nb/moonmcap/commit/b8b34f45ce8173c5f231fd871ad514d2332c2806)
+运行时核对可用 CRC，缺失时报告未校验。SHA-256 用于复验脚本的独立比较。选择性读取与全文件校验分别提供结果。270 字节为逻辑读取量，64 KiB 为载荷窗口，宿主预读、摘要及分块解压另有成本。输入为合成录制，文件与异步宿主运行于 Node，核心覆盖 JS/Wasm。验收版本有效 MoonBit 实现新增 3,215 行、删除 40 行、净增 3,175 行，排除上游既有代码、测试、注释、空行、生成文件和其他语言。AI 辅助开发与材料整理，申报人负责理解实现并复现实测。 [固定上游](https://github.com/LilaLola67/moonmcap/tree/e99a19f101092c982189d85d9536cf47eb5587c4) · [MIT 许可证](../LICENSE) · [实现提交](https://github.com/DWS-ai-nb/moonmcap/commit/f833a7b07491019e303ae62f32a0ccec265b5360)

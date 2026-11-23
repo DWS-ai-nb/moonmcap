@@ -52,7 +52,7 @@ flowchart LR
 
 ```sh
 git worktree add --detach _interop/baseline e99a19f101092c982189d85d9536cf47eb5587c4
-python -m pip install --target _interop_deps mcap==1.6.0 lz4==4.4.5 zstandard==0.25.0
+python -m pip install --target _interop_deps mcap==1.3.0 lz4==4.4.5 zstandard==0.25.0
 python tools/attachment_stream_workflows.py --baseline _interop/baseline
 moon test --target js --deny-warn
 moon test --target wasm --deny-warn
